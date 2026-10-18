@@ -4,7 +4,7 @@ import { BoardDetail, BoardSummary, CreateBoardDto, UpdateBoardDto } from '../ty
 // In production on Vercel, set VITE_API_BASE_URL in Vercel project environment variables
 // Example: https://your-backend.onrender.com/api/v1/boards
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1/boards';
+  import.meta.env.API_BASE_URL || 'http://localhost:8080/api/v1/boards';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
