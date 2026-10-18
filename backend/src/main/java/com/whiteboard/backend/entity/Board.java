@@ -24,7 +24,8 @@ import java.util.Map;
  */
 @Entity
 @Table(name = "boards", indexes = {
-        @Index(name = "idx_boards_updated_at", columnList = "updated_at")
+        @Index(name = "idx_boards_updated_at", columnList = "updated_at"),
+        @Index(name = "idx_boards_user_id", columnList = "user_id")
 })
 @Getter
 @Setter
@@ -39,6 +40,13 @@ public class Board {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * The user who owns this board.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     /**
      * Human-readable title of the board. Required and limited to 255 characters.
@@ -59,8 +67,9 @@ public class Board {
      * The structure follows the pattern:
      * <pre>
      * {
-     *   "nodes": [ { "id": "...", "type": "erTable|todoList|stickyNote", "position": {...}, "data": {...} } ],
-     *   "edges": [ { "id": "...", "source": "...", "target": "...", "data": {...} } ]
+     *   "nodes": [ { "id": "...", "type": "todoNode|stickyNote|imageNode", "position": {...}, "data": {...} } ],
+     *   "edges": [ { "id": "...", "source": "...", "target": "...", "data": {...} } ],
+     *   "drawings": [ { "id": "...", "points": [...], "color": "...", "width": 4 } ]
      * }
      * </pre>
      * </p>

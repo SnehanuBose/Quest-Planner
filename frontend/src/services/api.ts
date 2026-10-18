@@ -1,25 +1,108 @@
 import axios from 'axios';
-import { BoardDetail, BoardSummary, CreateBoardDto, UpdateBoardDto } from '../types';
+import {
+  AdminUserSummary,
+  AuthResponse,
+  BoardDetail,
+  BoardSummary,
+  CreateBoardDto,
+  LoginRequest,
+  RegisterRequest,
+  UpdateBoardDto,
+} from '../types';
 
-// In production on Vercel, set VITE_API_BASE_URL in Vercel project environment variables
-// Example: https://your-backend.onrender.com/api/v1/boards
-const API_BASE_URL =
-  import.meta.env.API_BASE_URL || 'http://localhost:8080/api/v1/boards';
+/**
+ * Normalizes the API base URL to ensure clean routing across /auth, /boards, and /admin
+ */
+const getApiRoot = (): string => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  let url = envUrl.trim().replace(/\/+$/, '');
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
+  // If user configured VITE_API_BASE_URL ending with /boards, strip it
+  if (url.endsWith('/boards')) {
+    url = url.substring(0, url.length - '/boards'.length);
+  }
+
+  // Ensure trailing /api/v1
+  if (!url.endsWith('/api/v1')) {
+    if (url.endsWith('/api')) {
+      url = `${url}/v1`;
+    } else {
+      url = `${url}/api/v1`;
+    }
+  }
+  return url;
+};
+
+export const api = axios.create({
+  baseURL: getApiRoot(),
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 15000,
 });
 
+// Request Interceptor: Attach JWT Bearer Token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('quest_auth_token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Handle 401 Unauthorized
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      const url = error.config?.url || '';
+      if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
+        localStorage.removeItem('quest_auth_token');
+        localStorage.removeItem('quest_auth_user');
+        window.dispatchEvent(new Event('auth:logout'));
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Authentication API Endpoints
+ */
+export const authApi = {
+  async register(data: RegisterRequest): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/auth/register', data);
+    return response.data;
+  },
+
+  async login(data: LoginRequest): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/auth/login', data);
+    return response.data;
+  },
+};
+
+/**
+ * Admin Oversight API Endpoints
+ */
+export const adminApi = {
+  async getUsers(): Promise<AdminUserSummary[]> {
+    const response = await api.get<AdminUserSummary[]>('/admin/users');
+    return response.data;
+  },
+};
+
+/**
+ * Board & Workspace API Endpoints
+ */
 export const boardApi = {
   /**
-   * Fetch all board summaries for the dashboard view
+   * Fetch all board summaries for the authenticated user
    */
   async getAllBoards(): Promise<BoardSummary[]> {
-    const response = await api.get<BoardSummary[]>('');
+    const response = await api.get<BoardSummary[]>('/boards');
     return response.data;
   },
 
@@ -27,15 +110,15 @@ export const boardApi = {
    * Fetch full board details including canvas nodes and edges
    */
   async getBoardById(id: number): Promise<BoardDetail> {
-    const response = await api.get<BoardDetail>(`/${id}`);
+    const response = await api.get<BoardDetail>(`/boards/${id}`);
     return response.data;
   },
 
   /**
-   * Create a new board
+   * Create a new board owned by the authenticated user
    */
   async createBoard(data: CreateBoardDto): Promise<BoardDetail> {
-    const response = await api.post<BoardDetail>('', data);
+    const response = await api.post<BoardDetail>('/boards', data);
     return response.data;
   },
 
@@ -43,7 +126,7 @@ export const boardApi = {
    * Autosave / update board metadata and canvas JSON
    */
   async updateBoard(id: number, data: UpdateBoardDto): Promise<BoardDetail> {
-    const response = await api.put<BoardDetail>(`/${id}`, data);
+    const response = await api.put<BoardDetail>(`/boards/${id}`, data);
     return response.data;
   },
 
@@ -51,22 +134,14 @@ export const boardApi = {
    * Delete a board permanently
    */
   async deleteBoard(id: number): Promise<void> {
-    await api.delete(`/${id}`);
-  },
-
-  /**
-   * Export the ER diagram from the canvas as a PostgreSQL DDL script
-   */
-  async exportSql(id: number): Promise<string> {
-    const response = await api.post<{ sql: string }>(`/${id}/export-sql`);
-    return response.data.sql;
+    await api.delete(`/boards/${id}`);
   },
 
   /**
    * Delete a node from a board and remove connected edges
    */
   async deleteNodeApi(boardId: number, nodeId: string): Promise<BoardDetail> {
-    const response = await api.delete<BoardDetail>(`/${boardId}/nodes/${nodeId}`);
+    const response = await api.delete<BoardDetail>(`/boards/${boardId}/nodes/${nodeId}`);
     return response.data;
   },
 };

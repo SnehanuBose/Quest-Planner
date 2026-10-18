@@ -63,4 +63,28 @@ public class CorsConfig {
             }
         };
     }
+
+    /**
+     * Exposes a {@link org.springframework.web.cors.CorsConfigurationSource} bean
+     * consumed directly by Spring Security to handle preflight OPTIONS requests.
+     */
+    @Bean
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+        org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
+        if (allowedOrigins != null && allowedOrigins.length > 0) {
+            configuration.setAllowedOrigins(java.util.Arrays.asList(allowedOrigins));
+        }
+        if (allowedOriginPatterns != null && allowedOriginPatterns.length > 0) {
+            configuration.setAllowedOriginPatterns(java.util.Arrays.asList(allowedOriginPatterns));
+        }
+        configuration.setAllowedMethods(java.util.Arrays.asList(allowedMethods));
+        configuration.setAllowedHeaders(java.util.Arrays.asList(allowedHeaders.split(",")));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(maxAge);
+
+        org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
+                new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }

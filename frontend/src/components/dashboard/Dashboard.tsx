@@ -8,22 +8,26 @@ import {
   Clock,
   Trash2,
   ExternalLink,
-  Layers,
   Sparkles,
   Loader2,
   FolderOpen,
-  X
+  X,
+  Shield,
+  LogOut,
 } from 'lucide-react';
 import { boardApi } from '../../services/api';
 import { BoardSummary } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface DashboardProps {
   onSelectBoard: (id: number) => void;
+  onNavigateToAdmin?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onSelectBoard }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onSelectBoard, onNavigateToAdmin }) => {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [boards, setBoards] = useState<BoardSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -127,12 +131,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectBoard }) => {
       <header className="sticky top-0 z-20 backdrop-blur-md bg-white/80 dark:bg-neutral-900/80 border-b border-neutral-200 dark:border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-sm shadow-indigo-500/20">
-              <Layers className="w-5 h-5" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="Quest Planner"
+              className="w-9 h-9 rounded-xl object-contain shadow-md shadow-indigo-500/20"
+            />
             <div>
               <span className="font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight text-base sm:text-lg">
-                Whiteboard
+                Quest Planner
               </span>
               <span className="hidden sm:inline-block ml-2 text-xs px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-mono">
                 v1.0
@@ -164,13 +170,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectBoard }) => {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-              className="p-2 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
+            {user?.role === 'ROLE_ADMIN' && onNavigateToAdmin && (
+              <button
+                onClick={onNavigateToAdmin}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-300/60 dark:border-amber-800/60 text-xs font-medium transition-colors"
+                title="Admin Dashboard"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Admin Panel</span>
+              </button>
+            )}
 
             <button
               onClick={openModal}
@@ -179,6 +188,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectBoard }) => {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">New Board</span>
             </button>
+
+            <button
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className="p-2 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800 mx-1" />
+
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs"
+                title={user?.email}
+              >
+                {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div className="hidden md:flex flex-col text-left">
+                <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 leading-tight">
+                  {user?.username}
+                </span>
+                <span className="text-[10px] font-mono text-neutral-400">
+                  {user?.role === 'ROLE_ADMIN' ? 'ADMIN' : 'USER'}
+                </span>
+              </div>
+              <button
+                onClick={logout}
+                title="Sign out"
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -192,7 +235,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectBoard }) => {
               Workspace Boards
             </h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              Visual planning boards combining To-Dos, sticky notes, and ER diagram schemas.
+              Visual planning boards combining To-Dos, sticky notes, freehand sketches, and images.
             </p>
           </div>
           <div className="text-xs text-neutral-400 dark:text-neutral-500 font-mono">

@@ -6,9 +6,30 @@ export interface BoardSummary {
   updatedAt: string;
 }
 
+export interface DrawingPoint {
+  x: number;
+  y: number;
+}
+
+export interface DrawingStroke {
+  id: string;
+  points: DrawingPoint[];
+  color: string;
+  width: number;
+}
+
+export interface ImageNodeData {
+  src: string;
+  width?: number;
+  height?: number;
+  rotation?: number; // In degrees, e.g., 0 to 360
+  alt?: string;
+}
+
 export interface CanvasData {
   nodes: any[];
   edges: any[];
+  drawings?: DrawingStroke[];
   viewport?: { x: number; y: number; zoom: number };
 }
 
@@ -43,20 +64,45 @@ export interface TodoNodeData {
   todos: TodoItem[];
 }
 
-export interface ERColumn {
-  id: string;
-  name: string;
-  type: string;
-  primaryKey: boolean;
-  nullable: boolean;
-}
-
-export interface ERTableNodeData {
-  label: string;
-  columns: ERColumn[];
-}
-
 export interface StickyNoteNodeData {
   content: string;
   color: string;
+}
+
+export type Role = 'ROLE_USER' | 'ROLE_ADMIN';
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+}
+
+export interface AuthResponse {
+  token: string;
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+  role?: Role;
+}
+
+export interface AdminUserSummary {
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+  createdAt: string;
+  planCount: number;
 }

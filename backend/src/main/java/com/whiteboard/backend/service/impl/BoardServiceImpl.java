@@ -5,8 +5,11 @@ import com.whiteboard.backend.dto.request.UpdateBoardRequest;
 import com.whiteboard.backend.dto.response.BoardResponse;
 import com.whiteboard.backend.dto.response.BoardSummaryResponse;
 import com.whiteboard.backend.entity.Board;
+import com.whiteboard.backend.entity.User;
 import com.whiteboard.backend.exception.ResourceNotFoundException;
 import com.whiteboard.backend.repository.BoardRepository;
+import com.whiteboard.backend.repository.UserRepository;
+import com.whiteboard.backend.security.SecurityUtils;
 import com.whiteboard.backend.service.BoardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,12 +23,8 @@ import java.util.stream.Collectors;
  * Implementation of {@link BoardService} managing the full lifecycle of boards.
  *
  * <p>Handles entity creation, retrieval, update, and deletion with proper
- * transactional boundaries. Read-only operations are optimized with
- * {@code @Transactional(readOnly = true)} to leverage Hibernate flush-mode
- * optimizations and potential read-replica routing.</p>
- *
- * <p>All entity-to-DTO transformations are centralized in private mapping methods
- * to maintain consistency and reduce duplication across service methods.</p>
+ * transactional boundaries. All board operations are strictly scoped to the
+ * authenticated user, enforcing complete cross-user data isolation.</p>
  *
  * @author Whiteboard Team
  * @version 1.0.0
@@ -37,6 +36,7 @@ import java.util.stream.Collectors;
 public class BoardServiceImpl implements BoardService {
 
     private final BoardRepository boardRepository;
+    private final UserRepository userRepository;
 
     /**
      * {@inheritDoc}
@@ -44,9 +44,14 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional(readOnly = true)
     public List<BoardSummaryResponse> getAllBoards() {
-        log.debug("Fetching all board summaries");
+        Long userId = SecurityUtils.getCurrentUserId();
+        log.debug("Fetching board summaries for user id: {}", userId);
 
-        return boardRepository.findAllByOrderByUpdatedAtDesc().stream()
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+
+        return boardRepository.findAllByUserIdOrderByUpdatedAtDesc(userId).stream()
                 .map(this::toSummaryResponse)
                 .collect(Collectors.toList());
     }
@@ -68,7 +73,10 @@ public class BoardServiceImpl implements BoardService {
      */
     @Override
     public BoardResponse createBoard(CreateBoardRequest request) {
-        log.info("Creating new board with title: '{}'", request.getTitle());
+        Long userId = SecurityUtils.getCurrentUserId();
+        log.info("Creating new board with title: '{}' for user id: {}", request.getTitle(), userId);
+
+        User user = userId != null ? userRepository.findById(userId).orElse(null) : null;
 
         // Initialize with default empty canvas structure
         Map<String, Object> defaultCanvas = new LinkedHashMap<>();
@@ -79,6 +87,7 @@ public class BoardServiceImpl implements BoardService {
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .canvasData(defaultCanvas)
+                .user(user)
                 .build();
 
         Board savedBoard = boardRepository.save(board);
@@ -177,7 +186,11 @@ public class BoardServiceImpl implements BoardService {
      * @return the found board entity
      */
     private Board findBoardOrThrow(Long id) {
-        return boardRepository.findById(id)
+        Long userId = SecurityUtils.getCurrentUserId();
+        if (userId == null) {
+            throw new ResourceNotFoundException("Board", "id", id);
+        }
+        return boardRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Board", "id", id));
     }
 

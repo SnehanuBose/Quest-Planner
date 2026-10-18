@@ -20,6 +20,9 @@ desktop.ini
 *.env.*.local
 .env.production
 .env.development
+!.env.example
+!*.env.example
+!**/.env.example
 
 # ------------------------------------------------------------------------------
 # IDEs and Editors
@@ -49,6 +52,7 @@ out/
 # Java / Spring Boot Backend (Maven)
 # ------------------------------------------------------------------------------
 Backend/target/
+backend/target/
 target/
 *.class
 

@@ -13,10 +13,10 @@
     </parent>
 
     <groupId>com.whiteboard</groupId>
-    <artifactId>whiteboard-backend</artifactId>
+    <artifactId>quest-planner-backend</artifactId>
     <version>1.0.0</version>
-    <name>Whiteboard Backend</name>
-    <description>Production-grade REST API for a visual workspace combining To-Do lists, whiteboard, and ER diagram builder</description>
+    <name>Quest Planner Backend</name>
+    <description>Production-grade REST API for Quest Planner: a visual workspace combining To-Do sprint lists, sticky notes, freehand sketches, and images</description>
 
     <properties>
         <java.version>21</java.version>
@@ -60,6 +60,31 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Boot Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- JWT (JJWT 0.12+) -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.6</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 

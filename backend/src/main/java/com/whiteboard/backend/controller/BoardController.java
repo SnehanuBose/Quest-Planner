@@ -5,7 +5,6 @@ import com.whiteboard.backend.dto.request.UpdateBoardRequest;
 import com.whiteboard.backend.dto.response.BoardResponse;
 import com.whiteboard.backend.dto.response.BoardSummaryResponse;
 import com.whiteboard.backend.service.BoardService;
-import com.whiteboard.backend.service.SqlExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * REST controller exposing CRUD endpoints for board management and SQL export.
+ * REST controller exposing CRUD endpoints for board management.
  *
  * <p>All endpoints are prefixed with {@code /api/v1/boards} and follow RESTful
  * conventions. This controller acts as a thin HTTP orchestration layer — all
@@ -31,7 +30,7 @@ import java.util.Map;
  *   <li>{@code POST   /api/v1/boards}               — Create a new board</li>
  *   <li>{@code PUT    /api/v1/boards/{id}}           — Update (autosave) a board</li>
  *   <li>{@code DELETE /api/v1/boards/{id}}           — Delete a board</li>
- *   <li>{@code POST   /api/v1/boards/{id}/export-sql} — Export ER diagram as SQL DDL</li>
+ *   <li>{@code DELETE /api/v1/boards/{id}/nodes/{nodeId}} — Delete a single node</li>
  * </ul>
  *
  * @author Whiteboard Team
@@ -44,7 +43,6 @@ import java.util.Map;
 public class BoardController {
 
     private final BoardService boardService;
-    private final SqlExportService sqlExportService;
 
     /**
      * Retrieves a lightweight list of all boards for dashboard display.
@@ -132,26 +130,5 @@ public class BoardController {
             @PathVariable String nodeId) {
         log.info("DELETE /api/v1/boards/{}/nodes/{} — Deleting node", boardId, nodeId);
         return ResponseEntity.ok(boardService.deleteNode(boardId, nodeId));
-    }
-
-    /**
-     * Exports the ER diagram from a board's canvas data as a PostgreSQL DDL script.
-     *
-     * <p>Parses all {@code erTable} nodes and edge connections from the board's
-     * canvas data to generate {@code CREATE TABLE} statements with column definitions,
-     * primary key constraints, and foreign key relationships.</p>
-     *
-     * @param id the unique identifier of the board whose ER diagram to export
-     * @return HTTP 200 with the generated SQL script as plain text
-     */
-    @PostMapping("/{id}/export-sql")
-    public ResponseEntity<Map<String, String>> exportSql(@PathVariable Long id) {
-        log.info("POST /api/v1/boards/{}/export-sql — Exporting SQL schema", id);
-
-        BoardResponse board = boardService.getBoardById(id);
-        String sqlScript = sqlExportService.generateSqlScript(board.getCanvasData());
-
-        Map<String, String> response = Map.of("sql", sqlScript);
-        return ResponseEntity.ok(response);
     }
 }

@@ -1,11 +1,13 @@
 <div align="center">
 
-# 🎨 Whiteboard Backend API
+# 🎨 Quest Planner Backend API
 
-**A production-grade REST API for a visual workspace combining To-Do lists, a freeform whiteboard, and an ER diagram builder.**
+**A production-grade REST API for a visual workspace combining To-Do sprint lists, whiteboard sticky notes, freehand pen sketches, and resizable, rotatable image nodes.**
 
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring Security](https://img.shields.io/badge/Spring_Security-6-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
+[![JWT](https://img.shields.io/badge/JWT-JJWT_0.12-black?style=for-the-badge&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
@@ -16,7 +18,9 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
-- [Architecture](#-architecture)
+- [Architecture & Security](#-architecture--security)
+- [Role-Based Access Control (RBAC)](#-role-based-access-control-rbac)
+- [Strict Privacy Guard](#-strict-privacy-guard)
 - [Tech Stack](#-tech-stack)
 - [Prerequisites](#-prerequisites)
 - [Local Setup](#-local-setup)
@@ -24,251 +28,232 @@
 - [Sample Payloads](#-sample-payloads)
 - [Project Structure](#-project-structure)
 - [Configuration](#-configuration)
+- [Docker & Cloud Deployment](#-docker--cloud-deployment)
 
 ---
 
 ## 🔍 Overview
 
-The **Whiteboard Backend** powers a visual workspace application where users can:
+The **Quest Planner Backend** powers a visual planning application where users can:
 
-- ✅ **Create and manage To-Do lists** directly on the canvas
-- 🗒️ **Place sticky notes** for freeform brainstorming
-- 🗄️ **Design Entity-Relationship diagrams** with tables, columns, and relationships
-- 🔗 **Connect nodes with edges** to define visual and logical relationships
-- 📤 **Export ER diagrams** as executable PostgreSQL SQL scripts
+- 🔐 **Register & Login** with secure JWT token authentication and BCrypt password encryption.
+- 🔒 **Private Boards**: Create, view, update, autosave, and delete boards owned strictly by the authenticated user.
+- 🗑️ **Delete Specific Nodes**: Remove individual task lists, images, or sticky notes with automatic cascading edge deletion.
+- ✏️ **Drawings & Freehand Sketches**: Persist vector strokes, color palettes, and widths directly within board canvas data.
+- 🖼️ **Image Boards**: Store resizable, rotatable image node structures and metadata.
+- 🛡️ **Admin Oversight**: Administrators can view user counts and platform statistics without compromising user privacy.
 
-All canvas data — nodes, edges, and their positions — is stored as a native PostgreSQL `jsonb` column, enabling flexible schema-less storage with full query capabilities.
+All canvas data — nodes, edges, vector drawings, and their viewport coordinates — is stored in a native PostgreSQL `jsonb` column.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Security
 
-The application follows **clean architecture** principles with strict separation of concerns:
+The backend is built on **clean architecture** and strict separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (React/Vite)                    │
-│                    http://localhost:5173                     │
+│                 http://localhost:5173 / Vercel               │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ REST API (JSON)
+                           │ HTTP REST + Bearer <token>
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    BoardController                           │
-│              HTTP Orchestration & Validation                 │
+│                    Spring Security 6                        │
+│   CorsFilter ──► JwtAuthenticationFilter ──► SecurityContext│
 ├─────────────────────────────────────────────────────────────┤
-│              BoardService  │  SqlExportService               │
-│           Business Logic   │  DDL Generation                 │
+│                    Controller Layer                         │
+│   AuthController │ BoardController │ AdminController        │
 ├─────────────────────────────────────────────────────────────┤
-│                    BoardRepository                           │
-│                Spring Data JPA + Hibernate                   │
+│                     Service Layer                           │
+│   AuthService │ BoardService │ AdminService                 │
 ├─────────────────────────────────────────────────────────────┤
-│                 PostgreSQL (jsonb storage)                   │
-│                 jdbc:postgresql://localhost:5432              │
+│                    Repository Layer                         │
+│           UserRepository │ BoardRepository                  │
+├─────────────────────────────────────────────────────────────┤
+│                 PostgreSQL (JSONB Storage)                  │
+│       `users` table (credentials)                           │
+│       `boards` table (`user_id` FK + native `canvas_data`)  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Design Decisions:**
-- **DTO Pattern**: Request/Response DTOs isolate the API contract from internal entity structure
-- **JSONB Storage**: Canvas data lives in a single `jsonb` column, avoiding complex relational joins for dynamic visual data
-- **Partial Updates**: PUT endpoints support partial updates for efficient autosave from the frontend
-- **Lightweight Summaries**: Dashboard listings omit heavy canvas data via a dedicated summary DTO
+**Key Architectural Decisions:**
+- **Stateless Session Management**: Authentication is fully stateless using signed JWTs (HMAC-SHA256).
+- **User Ownership Isolation**: Every board query is filtered through `SecurityUtils.getCurrentUserId()`. Any attempt to access another user's board ID returns `404 Not Found`.
+- **JSONB Canvas Mapping**: Visual nodes, edges, and drawings live in PostgreSQL `jsonb`, mapped with Hibernate 6 `@JdbcTypeCode(SqlTypes.JSON)`.
+- **Preflight CORS Integration**: `CorsConfigurationSource` is exposed as a Spring Bean, guaranteeing seamless preflight (`OPTIONS`) handling for Vercel preview and production domains.
+
+---
+
+## 🛡️ Role-Based Access Control (RBAC)
+
+| Role | Permissions |
+|---|---|
+| **`ROLE_USER`** | Register, log in, create boards, view/update/delete strictly their own boards. Assigned by default on registration. |
+| **`ROLE_ADMIN`** | Log in, access the Admin Oversight Dashboard (`GET /api/v1/admin/users`) to review registered user metadata and total plan counts. |
+
+### 🔑 Database-Enforced Admin Provisioning
+To uphold strict system security, the account creation endpoint and registration UI **only create standard `ROLE_USER` accounts**. Admin privileges cannot be requested or chosen at registration.
+
+To elevate a user to `ROLE_ADMIN`, run the following SQL update directly on the database:
+```sql
+UPDATE users
+SET role = 'ROLE_ADMIN'
+WHERE username = '<target-username>';
+```
+
+---
+
+## 🔒 Strict Privacy Guard
+
+To ensure maximum confidentiality for personal and enterprise projects:
+* Administrators **CANNOT** view, open, read, edit, or inspect any user's board titles, sticky notes, task items, sketches, or images.
+* The Admin endpoint returns only non-sensitive user identity attributes and an aggregated `planCount`:
+  ```json
+  [
+    {
+      "id": 1,
+      "username": "alice",
+      "email": "alice@example.com",
+      "role": "ROLE_USER",
+      "createdAt": "2026-10-18T10:00:00",
+      "planCount": 4
+    }
+  ]
+  ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|---|---|
-| **Java 21 LTS** | Language runtime |
-| **Spring Boot 3.3.5** | Application framework |
-| **Spring Web MVC** | REST API layer |
-| **Spring Data JPA** | Data access abstraction |
-| **Hibernate 6** | ORM with native JSONB support |
-| **PostgreSQL** | Relational database with JSONB |
-| **Jakarta Validation** | Request payload validation |
-| **Project Lombok** | Boilerplate reduction |
-| **HikariCP** | Connection pooling (default) |
-| **Maven** | Build & dependency management |
+| Technology | Purpose | Version |
+|---|---|---|
+| **Java** | High-performance, memory-safe LTS runtime | `21` |
+| **Spring Boot** | Application framework | `3.3.5` |
+| **Spring Security** | Stateless auth & method-level security | `6.x` |
+| **JJWT (io.jsonwebtoken)** | Token generation & verification | `0.12.6` |
+| **Spring Data JPA** | Object-relational mapping & repository layer | `3.3.5` |
+| **Hibernate 6** | JPA provider with native JSONB dialect | `6.5.x` |
+| **PostgreSQL Driver** | JDBC connectivity with Neon / local Postgres | `42.7.4` |
+| **HikariCP** | High-throughput connection pooling | `Default` |
+| **Jakarta Validation** | Declarative bean validation (`@NotBlank`, `@Size`) | `3.0.x` |
+| **Project Lombok** | Eliminates boilerplate (`@Data`, `@Builder`) | `1.18.x` |
 
 ---
 
 ## 📦 Prerequisites
 
-Before running the project, ensure you have:
-
-- ☕ **Java 21** — [Download OpenJDK](https://adoptium.net/)
-- 🐘 **PostgreSQL 14+** — Running locally on port `5432`
-- 🔧 **Maven 3.9+** — [Download Maven](https://maven.apache.org/download.cgi)
+Ensure you have the following installed locally:
+- ☕ **Java 21 LTS** — [Adoptium Temurin 21](https://adoptium.net/)
+- 🐘 **PostgreSQL 14+** (or a cloud [Neon](https://neon.tech) connection)
+- 🔧 **Maven 3.9+**
 
 ---
 
 ## 🚀 Local Setup
 
-### Step 1: Create the Database
-
-Using **psql**:
+### 1. Database Creation
 ```bash
 psql -U postgres
 CREATE DATABASE whiteboard_db;
 \q
 ```
 
-Or using **pgAdmin**:
-1. Right-click "Databases" → "Create" → "Database..."
-2. Name: `whiteboard_db`
-3. Owner: `postgres`
-4. Click "Save"
-
-### Step 2: Configure Credentials
-
-Edit `src/main/resources/application.yml` to match your PostgreSQL credentials:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/whiteboard_db
-    username: postgres     # ← Your PostgreSQL username
-    password: postgres     # ← Your PostgreSQL password
+### 2. Configure Environment Variables
+Copy `.env.example` to `.env` or set environment variables:
+```bash
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/whiteboard_db
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=postgres
+JWT_SECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+JWT_EXPIRATION=86400000
+CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:5173,http://localhost:3000
 ```
 
-### Step 3: Build & Run
-
+### 3. Build & Run
 ```bash
-# Clone and navigate to the project
-cd whiteboard-backend
+# Build the application
+mvn clean package -DskipTests
 
-# Build the project
-mvn clean install
-
-# Run the application
+# Run the Spring Boot server
 mvn spring-boot:run
 ```
-
-The API will start on **http://localhost:8080**.
-
-### Step 4: Verify
-
-```bash
-curl http://localhost:8080/api/v1/boards
-# Expected: []
-```
+The application will launch on **http://localhost:8080**.
 
 ---
 
 ## 📡 API Endpoints
 
-All endpoints are prefixed with `/api/v1/boards`.
+### 1. Authentication (`/api/v1/auth`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | Public | Register new user with username, email, password, and optional role |
+| `POST` | `/api/v1/auth/login` | Public | Authenticate credentials and receive signed Bearer JWT |
 
-| Method | Path | Request Body | Response Code | Description |
-|--------|------|-------------|---------------|-------------|
-| `GET` | `/api/v1/boards` | — | `200 OK` | List all board summaries (lightweight, no canvas data) |
-| `GET` | `/api/v1/boards/{id}` | — | `200 OK` | Get full board details with canvas data |
-| `POST` | `/api/v1/boards` | `CreateBoardRequest` | `201 Created` | Create a new board with empty canvas |
-| `PUT` | `/api/v1/boards/{id}` | `UpdateBoardRequest` | `200 OK` | Update board title, description, and/or canvas |
-| `DELETE` | `/api/v1/boards/{id}` | — | `204 No Content` | Delete a board permanently |
-| `POST` | `/api/v1/boards/{id}/export-sql` | — | `200 OK` | Export ER diagram as PostgreSQL DDL script |
+### 2. Admin Oversight (`/api/v1/admin`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/users` | `ROLE_ADMIN` | Summary list of registered users and plan counts (Strict Privacy Guard) |
 
-### Error Responses
-
-All errors follow a consistent structure:
-
-```json
-{
-  "timestamp": "2026-10-18T09:30:00",
-  "status": 404,
-  "message": "Board not found with id: '42'",
-  "path": "/api/v1/boards/42"
-}
-```
+### 3. Boards (`/api/v1/boards`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/boards` | Authenticated | List all board summaries owned by current user |
+| `GET` | `/api/v1/boards/{id}` | Authenticated | Get full details & canvas data for owned board |
+| `POST` | `/api/v1/boards` | Authenticated | Create a new board owned by current user |
+| `PUT` | `/api/v1/boards/{id}` | Authenticated | Autosave / partial update of title, description, nodes, edges & drawings |
+| `DELETE` | `/api/v1/boards/{id}` | Authenticated | Delete a board permanently |
+| `DELETE` | `/api/v1/boards/{id}/nodes/{nodeId}` | Authenticated | Delete single node from board and cascade attached edges |
 
 ---
 
 ## 📝 Sample Payloads
 
 ### ➕ Create a Board
-
-**Request:** `POST /api/v1/boards`
+**Request**: `POST /api/v1/boards`
 ```json
 {
-  "title": "My Database Design",
-  "description": "ER diagram for the e-commerce platform"
+  "title": "Sprint 42 Architecture",
+  "description": "Visual planning canvas"
 }
 ```
 
-**Response:** `201 Created`
+### ✏️ Update a Board (Autosave with Nodes & Drawings)
+**Request**: `PUT /api/v1/boards/1`
 ```json
 {
-  "id": 1,
-  "title": "My Database Design",
-  "description": "ER diagram for the e-commerce platform",
-  "canvasData": {
-    "nodes": [],
-    "edges": []
-  },
-  "createdAt": "2026-10-18T09:30:00",
-  "updatedAt": "2026-10-18T09:30:00"
-}
-```
-
-### ✏️ Update a Board (Autosave with ER Tables)
-
-**Request:** `PUT /api/v1/boards/1`
-```json
-{
-  "title": "E-Commerce DB Schema",
+  "title": "Sprint 42 Architecture",
   "canvasData": {
     "nodes": [
       {
-        "id": "node-1",
-        "type": "erTable",
-        "position": { "x": 100, "y": 200 },
+        "id": "todo-1",
+        "type": "todoNode",
+        "position": { "x": 100, "y": 150 },
         "data": {
-          "label": "users",
-          "columns": [
-            { "name": "id", "type": "SERIAL", "primaryKey": true, "nullable": false },
-            { "name": "email", "type": "VARCHAR(255)", "primaryKey": false, "nullable": false },
-            { "name": "name", "type": "VARCHAR(100)", "primaryKey": false, "nullable": true }
-          ]
+          "title": "Sprint Tasks",
+          "todos": [{ "id": "1", "text": "Deploy to Render", "completed": true }]
         }
       },
       {
-        "id": "node-2",
-        "type": "erTable",
-        "position": { "x": 500, "y": 200 },
+        "id": "image-1",
+        "type": "imageNode",
+        "position": { "x": 400, "y": 150 },
         "data": {
-          "label": "orders",
-          "columns": [
-            { "name": "id", "type": "SERIAL", "primaryKey": true, "nullable": false },
-            { "name": "user_id", "type": "INTEGER", "primaryKey": false, "nullable": false },
-            { "name": "total", "type": "DECIMAL(10,2)", "primaryKey": false, "nullable": false },
-            { "name": "created_at", "type": "TIMESTAMP", "primaryKey": false, "nullable": false }
-          ]
+          "src": "data:image/png;base64,...",
+          "rotation": 15
         }
       }
     ],
-    "edges": [
+    "edges": [],
+    "drawings": [
       {
-        "id": "edge-1",
-        "source": "node-2",
-        "target": "node-1",
-        "data": {
-          "sourceColumn": "user_id",
-          "targetColumn": "id"
-        }
+        "id": "stroke-1",
+        "points": [{ "x": 100, "y": 100 }, { "x": 120, "y": 110 }],
+        "color": "#6366f1",
+        "width": 4
       }
     ]
   }
-}
-```
-
-### 📤 Export SQL
-
-**Request:** `POST /api/v1/boards/1/export-sql`
-
-**Response:** `200 OK`
-```json
-{
-  "sql": "-- ============================================\n-- Generated PostgreSQL Schema\n-- Exported from Whiteboard ER Diagram Builder\n-- ============================================\n\nCREATE TABLE users (\n    id                             SERIAL,\n    email                          VARCHAR(255) NOT NULL,\n    name                           VARCHAR(100),\n    CONSTRAINT pk_users PRIMARY KEY (id)\n);\n\nCREATE TABLE orders (\n    id                             SERIAL,\n    user_id                        INTEGER NOT NULL,\n    total                          DECIMAL(10,2) NOT NULL,\n    created_at                     TIMESTAMP NOT NULL,\n    CONSTRAINT pk_orders PRIMARY KEY (id)\n);\n\n-- Foreign Key Constraints\n-- ============================================\n\nALTER TABLE orders\n    ADD CONSTRAINT fk_orders_users_1\n    FOREIGN KEY (user_id) REFERENCES users (id);\n"
 }
 ```
 
@@ -277,55 +262,72 @@ All errors follow a consistent structure:
 ## 📁 Project Structure
 
 ```
-com.whiteboard.backend
-├── config/
-│   └── CorsConfig.java                 # Global CORS configuration
-├── controller/
-│   └── BoardController.java            # REST endpoints for board CRUD & SQL export
-├── dto/
-│   ├── request/
-│   │   ├── CreateBoardRequest.java     # Validated DTO for board creation
-│   │   └── UpdateBoardRequest.java     # Partial update DTO for autosave
-│   └── response/
-│       ├── BoardResponse.java          # Full board detail response
-│       ├── BoardSummaryResponse.java   # Lightweight dashboard listing DTO
-│       └── ErrorResponse.java          # Standardized error payload
-├── entity/
-│   └── Board.java                      # JPA entity with JSONB canvas data
-├── exception/
-│   ├── GlobalExceptionHandler.java     # Centralized @RestControllerAdvice
-│   └── ResourceNotFoundException.java # Custom 404 exception
-├── repository/
-│   └── BoardRepository.java           # Spring Data JPA repository
-├── service/
-│   ├── BoardService.java              # Business logic interface
-│   ├── SqlExportService.java          # SQL generation interface
-│   └── impl/
-│       ├── BoardServiceImpl.java      # Board lifecycle implementation
-│       └── SqlExportServiceImpl.java  # ER-to-SQL parser implementation
-└── BackendApplication.java            # Spring Boot entry point
+backend/
+├── pom.xml
+├── Dockerfile
+├── .env.example
+├── README.md
+└── src/main/java/com/whiteboard/backend/
+    ├── BackendApplication.java
+    ├── config/
+    │   ├── CorsConfig.java
+    │   └── SecurityConfig.java
+    ├── controller/
+    │   ├── AdminController.java
+    │   ├── AuthController.java
+    │   └── BoardController.java
+    ├── dto/
+    │   ├── request/
+    │   │   ├── CreateBoardRequest.java
+    │   │   ├── LoginRequest.java
+    │   │   ├── RegisterRequest.java
+    │   │   └── UpdateBoardRequest.java
+    │   └── response/
+    │       ├── AdminUserSummaryResponse.java
+    │       ├── AuthResponse.java
+    │       ├── BoardResponse.java
+    │       ├── BoardSummaryResponse.java
+    │       └── ErrorResponse.java
+    ├── entity/
+    │   ├── Board.java
+    │   ├── Role.java
+    │   └── User.java
+    ├── exception/
+    │   ├── GlobalExceptionHandler.java
+    │   └── ResourceNotFoundException.java
+    ├── repository/
+    │   ├── BoardRepository.java
+    │   └── UserRepository.java
+    ├── security/
+    │   ├── CustomUserDetails.java
+    │   ├── CustomUserDetailsService.java
+    │   ├── JwtAuthenticationEntryPoint.java
+    │   ├── JwtAuthenticationFilter.java
+    │   ├── JwtTokenProvider.java
+    │   └── SecurityUtils.java
+    └── service/
+        ├── AdminService.java
+        ├── AuthService.java
+        ├── BoardService.java
+        └── impl/
+            ├── AdminServiceImpl.java
+            ├── AuthServiceImpl.java
+            └── BoardServiceImpl.java
 ```
 
 ---
 
-## ⚙️ Configuration
+## 🐳 Docker & Cloud Deployment
 
-Key configuration in `application.yml`:
+### Docker Multi-Stage Build
+The included [`Dockerfile`](Dockerfile) packages the Spring Boot application into a lightweight Alpine JRE 21 container:
+```bash
+docker build -t quest-planner-backend .
+docker run -p 8080:8080 -e SPRING_DATASOURCE_URL=... quest-planner-backend
+```
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `server.port` | `8080` | API server port |
-| `spring.datasource.url` | `jdbc:postgresql://localhost:5432/whiteboard_db` | Database URL |
-| `spring.datasource.username` | `postgres` | Database username |
-| `spring.datasource.password` | `postgres` | Database password |
-| `spring.jpa.hibernate.ddl-auto` | `update` | Schema auto-generation mode |
-| `cors.allowed-origins` | `http://localhost:5173,http://localhost:3000` | Allowed CORS origins |
-| `cors.max-age` | `3600` | CORS preflight cache duration (seconds) |
-
----
-
-<div align="center">
-
-**Built with ❤️ using Spring Boot & PostgreSQL**
-
-</div>
+### Deploying to Render
+1. Create a new **Web Service** on Render connected to your Git repository.
+2. Set the **Root Directory** to `backend`.
+3. Choose the **Docker** environment (or Maven runtime).
+4. Add the required environment variables (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET`, `CORS_ALLOWED_ORIGIN_PATTERNS`).
