@@ -1,0 +1,104 @@
+# ==============================================================================
+# Monorepo .gitignore for Whiteboard Workspace (Backend + Frontend)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Operating System & Environment Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Environment variables and secrets
+*.env
+*.env.local
+*.env.*.local
+.env.production
+.env.development
+
+# ------------------------------------------------------------------------------
+# IDEs and Editors
+# ------------------------------------------------------------------------------
+# JetBrains (IntelliJ IDEA, WebStorm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Eclipse / NetBeans
+.classpath
+.project
+.settings/
+.nb-gradle/
+
+# ------------------------------------------------------------------------------
+# Java / Spring Boot Backend (Maven)
+# ------------------------------------------------------------------------------
+Backend/target/
+target/
+*.class
+
+# Maven log files and wrappers
+*.log
+mvnw
+mvnw.cmd
+.mvn/wrapper/maven-wrapper.jar
+
+# Crash logs
+hs_err_pid*
+replay_pid*
+
+# ------------------------------------------------------------------------------
+# Node.js / React Frontend (Vite, TypeScript, Tailwind)
+# ------------------------------------------------------------------------------
+# Dependency directories
+node_modules/
+frontend/node_modules/
+.pnp
+.pnp.js
+
+# Production build outputs
+dist/
+frontend/dist/
+build/
+frontend/build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Vite cache
+.vite/
+frontend/.vite/
+
+# TypeScript cache
+*.tsbuildinfo
+.eslintcache
+
+# Testing coverage
+coverage/
+frontend/coverage/
+.nyc_output/
+
+# Temporary / scratch files
+tmp/
+temp/
