@@ -14,7 +14,7 @@ import {
  * Normalizes the API base URL to ensure clean routing across /auth, /boards, and /admin
  */
 const getApiRoot = (): string => {
-  const envUrl = import.meta.env.API_BASE_URL || 'http://localhost:8080';
+  const envUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
   let url = envUrl.trim().replace(/\/+$/, '');
 
   // If user configured VITE_API_BASE_URL ending with /boards, strip it
