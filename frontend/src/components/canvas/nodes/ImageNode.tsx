@@ -66,17 +66,17 @@ export const ImageNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       ref={cardRef}
       className={`group relative rounded-xl border transition-shadow ${
         selected
-          ? 'border-indigo-500 shadow-xl shadow-indigo-500/20 ring-1 ring-indigo-500'
-          : 'border-neutral-200 dark:border-neutral-800 shadow-md shadow-neutral-200/50 dark:shadow-neutral-950/50'
-      } bg-white dark:bg-neutral-900 p-2 min-w-[120px] min-h-[100px]`}
+          ? 'border-amber-500 shadow-xl shadow-amber-500/20 ring-1 ring-amber-500'
+          : 'border-amber-200/70 dark:border-amber-900/40 shadow-md shadow-stone-200/50 dark:shadow-stone-950/50'
+      } bg-white dark:bg-stone-900 p-2 min-w-[120px] min-h-[100px]`}
     >
       {/* NodeResizer for smooth multi-directional resizing */}
       <NodeResizer
         isVisible={!!selected}
         minWidth={100}
         minHeight={80}
-        lineClassName="!border-indigo-500/60"
-        handleClassName="!w-2.5 !h-2.5 !bg-indigo-600 !border-2 !border-white dark:!border-neutral-950 !rounded-full shadow-sm"
+        lineClassName="!border-amber-500/60"
+        handleClassName="!w-2.5 !h-2.5 !bg-amber-500 !border-2 !border-white dark:!border-stone-950 !rounded-full shadow-sm"
       />
 
       <Handle type="target" position={Position.Left} className="!w-2.5 !h-2.5" />
@@ -88,12 +88,12 @@ export const ImageNode: React.FC<NodeProps> = ({ id, data, selected }) => {
           <div
             onPointerDown={handleRotatePointerDown}
             onMouseDown={(e) => e.stopPropagation()}
-            className="nodrag nopan w-6 h-6 rounded-full bg-white dark:bg-neutral-800 border-2 border-indigo-500 shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-110 hover:bg-indigo-50 dark:hover:bg-neutral-700 transition-all text-indigo-600 dark:text-indigo-400"
+            className="nodrag nopan w-6 h-6 rounded-full bg-white dark:bg-stone-800 border-2 border-amber-500 shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-110 hover:bg-amber-50 dark:hover:bg-stone-700 transition-all text-amber-600 dark:text-amber-400"
             title="Drag to rotate image"
           >
             <RotateCw className="w-3 h-3 pointer-events-none" />
           </div>
-          <div className="w-0.5 h-3 bg-indigo-500/60" />
+          <div className="w-0.5 h-3 bg-amber-500/60" />
         </div>
       )}
 
@@ -104,12 +104,12 @@ export const ImageNode: React.FC<NodeProps> = ({ id, data, selected }) => {
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          className="nodrag nopan absolute -bottom-11 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border border-neutral-200 dark:border-neutral-800 shadow-lg text-xs select-none"
+          className="nodrag nopan absolute -bottom-11 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border border-amber-200/80 dark:border-amber-900/60 shadow-lg text-xs select-none"
         >
           <button
             type="button"
             onClick={() => updateRotation(rotation - 15)}
-            className="p-1 rounded text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="p-1 rounded text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
             title="Rotate -15°"
           >
             <RotateCcw className="w-3 h-3" />
@@ -118,7 +118,7 @@ export const ImageNode: React.FC<NodeProps> = ({ id, data, selected }) => {
           <button
             type="button"
             onClick={() => updateRotation(rotation + 15)}
-            className="p-1 rounded text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="p-1 rounded text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
             title="Rotate +15°"
           >
             <RotateCw className="w-3 h-3" />
@@ -134,11 +134,11 @@ export const ImageNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="nodrag nopan w-20 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+            className="nodrag nopan w-20 h-2 bg-stone-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
             title="Rotation angle slider"
           />
 
-          <span className="font-mono text-[10px] text-neutral-500 w-7 text-right">
+          <span className="font-mono text-[10px] text-stone-500 w-7 text-right">
             {rotation}°
           </span>
 
@@ -146,7 +146,7 @@ export const ImageNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             <button
               type="button"
               onClick={() => updateRotation(0)}
-              className="p-1 rounded text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              className="p-1 rounded text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
               title="Reset rotation to 0°"
             >
               <RefreshCw className="w-2.5 h-2.5" />

@@ -55,8 +55,10 @@
 
 **Quest Planner** bridges the gap between daily execution, sprint tracking, and visual creative ideation. Instead of juggling separate apps for checklists, brainstorms, and sketches, Quest Planner unites them on one infinite canvas:
 
+- **Warm Yellowish & Parchment Aesthetic**: Hand-crafted parchment palette (`#faf8f2` in light mode, obsidian-charcoal `#12110e` in dark mode) accented with warm golden amber tones and subtle textured scrollbars.
 - **Checklists & Task Tracking**: Interactive To-Do nodes with live completion progress bars and individual card deletion.
-- **Freehand Pen & Sketching Tool**: Smooth vector drawing layer with custom color palettes (8 presets + custom color picker), stroke widths, undo, and canvas clear.
+- **Freehand Pen & Sketching Tool**: Smooth vector drawing layer with custom color palettes (Amber, Gold, Emerald, Rose, Sky, Purple, Dark, White, plus custom color picker), stroke widths, undo, and canvas clear.
+- **Interactive Stroke Eraser Tool**: Drag or click across any drawn stroke to erase it in real time with vector line-segment collision detection. Includes custom amber eraser cursor and dedicated controls.
 - **Images (Paste, Reposition, Resize, Rotate)**:
   - Paste images directly from the clipboard (<kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>) or upload from disk.
   - Freely reposition via native dragging.
@@ -75,8 +77,9 @@
 │                        Frontend (Client Layer)                         │
 │             React 18 + TypeScript + Vite + Tailwind CSS                │
 │                 Infinite Canvas: @xyflow/react (v12)                   │
+│          Warm Parchment Theme + Freehand Pen & Interactive Eraser      │
 │          AuthContext (JWT in localStorage) + Axios Interceptors        │
-│          Freehand Pen Vector Layer + Resizable/Rotatable Image Nodes   │
+│          Resizable & Rotatable Image Nodes (Paste + Slider Controls)   │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ HTTP / REST + Authorization: Bearer <token>
                                     ▼
@@ -108,20 +111,21 @@
 
 | Domain | Feature | Description |
 |---|---|---|
+| **Theme** | **Yellowish / Parchment Aesthetic** | Warm parchment canvas (`#faf8f2` / `#12110e`) with golden amber highlights and dark mode toggle. |
 | **Security** | **JWT Authentication** | Secure user registration and login with stateless JWTs (HMAC-SHA256) and BCrypt passwords. |
 | **Security** | **Role-Based Access (RBAC)** | Dedicated privileges for `ROLE_USER` and `ROLE_ADMIN`. |
 | **Security** | **DB-Only Admin Provisioning** | Account registration window only creates standard users. Admin privileges can only be granted directly via database update. |
 | **Privacy** | **Zero-Knowledge Board Isolation** | Users can view/modify only their own boards. Admins cannot view, read, or inspect user boards. |
 | **Admin** | **Oversight Dashboard** | Platform statistics and registered user list with aggregate plan counts without leaking user data. |
 | **Canvas** | **Infinite Workspace** | Pan, zoom, and multi-touch support powered by `@xyflow/react`. |
-| **Drawing** | **Freehand Pen & Palette** | Draw or write freely on the infinite canvas. Includes 8 color presets, custom color picker, stroke width controls, and undo. |
+| **Drawing** | **Freehand Pen & Palette** | Draw or write freely on the infinite canvas. Includes 8 color presets (amber default), custom color picker, stroke width controls, and undo. |
+| **Drawing** | **Interactive Eraser** | Real-time vector stroke eraser that removes any drawn line upon collision (drag or click). |
 | **Images** | **Paste, Resize & Rotate** | Paste images with `Ctrl+V` or upload files. Drag to reposition, use edge handles to resize, and rotate `0°-360°` using the visual rotation knob or smooth slider. |
 | **Canvas** | **Card & Node Deletion** | In-place delete buttons on To-Do cards, Image nodes, and Sticky Notes with cascading edge removal. |
-| **Canvas** | **Docked Toolbar** | Quick-add controls for To-Do Lists, Sticky Notes, Image Upload, and Pen Drawing with responsive collapse. |
+| **Canvas** | **Docked Toolbar** | Quick-add controls for To-Do Lists, Sticky Notes, Image Upload, Pen Drawing, and Eraser with responsive collapse. |
 | **Data** | **PostgreSQL JSONB** | Stores node graphs, edges, drawings, and viewport positions inside a native `jsonb` column. |
 | **Branding** | **Custom Emblem Icon** | Custom neon sword & compass logo integrated as favicon, touch icon, and header emblem. |
-| **Theme** | **Class-based Dark Mode** | Persistent theme toggle synchronized with `localStorage` and OS preference. |
-| **Sync** | **Debounced Autosave** | Automatically updates the backend 1.5s after user movement, drawing, or text input. |
+| **Sync** | **Debounced Autosave** | Automatically updates the backend 1.5s after user movement, drawing, erasing, or text input. |
 
 ---
 

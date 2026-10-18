@@ -4,10 +4,10 @@
 
 @layer base {
   * {
-    border-color: theme('colors.neutral.200');
+    border-color: theme('colors.amber.200/50', #e7dfcf);
   }
   .dark * {
-    border-color: theme('colors.neutral.800');
+    border-color: theme('colors.amber.900/30', #2c271e);
   }
 }
 
@@ -19,21 +19,21 @@ dialog:modal {
 dialog::backdrop {
   overflow: hidden;
   overscroll-behavior: contain;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
+  background-color: rgba(18, 17, 14, 0.55);
+  backdrop-filter: blur(5px);
 }
 
-/* React Flow theme customizations */
+/* React Flow theme customizations for Yellowish / Parchment Quest Aesthetic */
 .react-flow {
   background-color: transparent !important;
 }
 
 .dark .react-flow__background pattern circle {
-  fill: #333338 !important;
+  fill: #342e22 !important;
 }
 
 .react-flow__background pattern circle {
-  fill: #cbd5e1 !important;
+  fill: #dcd4c0 !important;
 }
 
 .react-flow__handle {
@@ -41,67 +41,67 @@ dialog::backdrop {
   height: 9px !important;
   border-radius: 9999px !important;
   border: 2px solid white !important;
-  background: #6366f1 !important;
+  background: #f59e0b !important;
   transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .dark .react-flow__handle {
-  border-color: #18181b !important;
+  border-color: #1a1712 !important;
 }
 
 .react-flow__handle:hover {
   transform: scale(1.3);
-  background: #4f46e5 !important;
+  background: #d97706 !important;
 }
 
 .react-flow__edge-path {
-  stroke: #94a3b8 !important;
+  stroke: #c2b69d !important;
   stroke-width: 2 !important;
   transition: stroke 0.2s ease, stroke-width 0.2s ease;
 }
 
 .dark .react-flow__edge-path {
-  stroke: #52525b !important;
+  stroke: #4d4332 !important;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #6366f1 !important;
+  stroke: #f59e0b !important;
   stroke-width: 2.5 !important;
 }
 
 .dark .react-flow__controls {
-  background: #18181b !important;
-  border: 1px solid #27272a !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  background: #1a1712 !important;
+  border: 1px solid #383022 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
   border-radius: 8px !important;
   overflow: hidden;
 }
 
 .react-flow__controls {
   background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #e7decb !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.08) !important;
   border-radius: 8px !important;
   overflow: hidden;
 }
 
 .react-flow__controls-button {
-  border-bottom: 1px solid #e2e8f0 !important;
+  border-bottom: 1px solid #e7decb !important;
   background: transparent !important;
-  fill: #64748b !important;
+  fill: #786d58 !important;
 }
 
 .dark .react-flow__controls-button {
-  border-bottom: 1px solid #27272a !important;
-  fill: #a1a1aa !important;
+  border-bottom: 1px solid #383022 !important;
+  fill: #b5a88e !important;
 }
 
 .react-flow__controls-button:hover {
-  background: rgba(99, 102, 241, 0.1) !important;
-  fill: #6366f1 !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  fill: #f59e0b !important;
 }
 
-/* Custom subtle scrollbar */
+/* Custom subtle warm scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -112,18 +112,18 @@ dialog::backdrop {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(180, 160, 120, 0.4);
   border-radius: 9999px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(82, 82, 91, 0.4);
+  background: rgba(120, 100, 70, 0.45);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
+  background: rgba(217, 119, 6, 0.6);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(82, 82, 91, 0.7);
+  background: rgba(245, 158, 11, 0.65);
 }

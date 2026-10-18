@@ -20,14 +20,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password) {
-      setError('Please enter both username and password.');
+      setError('Please provide your username/email and password.');
       return;
     }
 
     try {
       setIsSubmitting(true);
       setError('');
-      await login({ username: username.trim(), password });
+      await login({
+        username: username.trim(),
+        password,
+      });
       onLoginSuccess();
     } catch (err: any) {
       console.error('Login error:', err);
@@ -39,13 +42,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-neutral-900 dark:text-neutral-100 transition-colors relative">
+    <div className="min-h-screen bg-[#faf8f2] dark:bg-[#12110e] flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-stone-900 dark:text-stone-100 transition-colors relative">
       {/* Dark Mode Toggle */}
       <div className="absolute top-6 right-6">
         <button
           onClick={toggleTheme}
           aria-label="Toggle theme"
-          className="p-2 rounded-lg text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+          className="p-2 rounded-lg text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 hover:bg-amber-100/50 dark:hover:bg-[#1f1b14] transition-colors"
         >
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
@@ -55,16 +58,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
         <img
           src="/logo.png"
           alt="Quest Planner"
-          className="w-14 h-14 rounded-2xl object-contain shadow-xl shadow-indigo-500/25 mx-auto mb-4"
+          className="w-16 h-16 rounded-2xl object-contain shadow-xl shadow-amber-500/20 mx-auto mb-4"
         />
-        <h2 className="text-2xl font-bold tracking-tight">Welcome to Quest Planner</h2>
-        <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+        <h2 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Welcome to Quest Planner</h2>
+        <p className="mt-1.5 text-xs text-stone-500 dark:text-stone-400">
           Sign in to access your private workspace, tasks, and visual sketches
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-white dark:bg-neutral-900 py-8 px-6 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/60 rounded-2xl border border-neutral-200 dark:border-neutral-800 sm:px-10">
+        <div className="bg-white dark:bg-[#181611] py-8 px-6 shadow-xl shadow-amber-500/5 rounded-2xl border border-amber-200/70 dark:border-amber-900/40 sm:px-10">
           {error && (
             <div className="mb-5 p-3 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 flex items-start gap-2.5 text-xs text-red-600 dark:text-red-400">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -74,11 +77,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
                 Username or Email
               </label>
               <div className="relative">
-                <UserIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <UserIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
                   type="text"
                   required
@@ -88,17 +91,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
                     if (error) setError('');
                   }}
                   placeholder="e.g. alex or alex@example.com"
-                  className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
+                  className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg bg-amber-50/40 dark:bg-[#1f1b14] border border-amber-300/60 dark:border-amber-800/60 text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500 dark:focus:border-amber-500 transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
                   type="password"
                   required
@@ -108,7 +111,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
                     if (error) setError('');
                   }}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
+                  className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg bg-amber-50/40 dark:bg-[#1f1b14] border border-amber-300/60 dark:border-amber-800/60 text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500 dark:focus:border-amber-500 transition-colors"
                 />
               </div>
             </div>
@@ -116,7 +119,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-semibold text-sm shadow-sm shadow-amber-500/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -132,11 +135,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onLo
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-neutral-100 dark:border-neutral-800 text-center text-xs text-neutral-500 dark:text-neutral-400">
+          <div className="mt-6 pt-5 border-t border-amber-100 dark:border-amber-900/30 text-center text-xs text-stone-500 dark:text-stone-400">
             Don't have an account yet?{' '}
             <button
               onClick={onNavigateToRegister}
-              className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+              className="font-medium text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1"
             >
               Create account
             </button>

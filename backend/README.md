@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🎨 Quest Planner Backend API
+# ⚔️ Quest Planner Backend API
 
-**A production-grade REST API for a visual workspace combining To-Do sprint lists, whiteboard sticky notes, freehand pen sketches, and resizable, rotatable image nodes.**
+**A production-grade REST API for a visual workspace combining To-Do sprint lists, whiteboard sticky notes, freehand pen sketches & interactive eraser sync, and resizable, rotatable image nodes.**
 
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -39,7 +39,7 @@ The **Quest Planner Backend** powers a visual planning application where users c
 - 🔐 **Register & Login** with secure JWT token authentication and BCrypt password encryption.
 - 🔒 **Private Boards**: Create, view, update, autosave, and delete boards owned strictly by the authenticated user.
 - 🗑️ **Delete Specific Nodes**: Remove individual task lists, images, or sticky notes with automatic cascading edge deletion.
-- ✏️ **Drawings & Freehand Sketches**: Persist vector strokes, color palettes, and widths directly within board canvas data.
+- ✏️ **Drawings & Freehand Sketches**: Persist vector strokes, color palettes, widths, and eraser modifications directly within board canvas data.
 - 🖼️ **Image Boards**: Store resizable, rotatable image node structures and metadata.
 - 🛡️ **Admin Oversight**: Administrators can view user counts and platform statistics without compromising user privacy.
 

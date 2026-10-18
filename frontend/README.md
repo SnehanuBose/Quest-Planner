@@ -1,15 +1,19 @@
 # 🎨 Quest Planner Frontend
 
-A modern, responsive, and minimalist visual planning workspace combining To-Do sprint lists, whiteboard sticky notes, freehand pen sketching with a customizable color palette, and resizable, rotatable image nodes.
+A modern, responsive, and minimalist visual planning workspace combining To-Do sprint lists, whiteboard sticky notes, freehand pen sketching with a customizable color palette, an interactive stroke eraser tool, and resizable, rotatable image nodes.
 
-Built with **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, and **@xyflow/react** (React Flow 12).
+Styled with a **warm yellowish parchment theme** (`#faf8f2` light / `#12110e` dark) and built with **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, and **@xyflow/react** (React Flow 12).
 
 ---
 
 ## 🚀 Key Features
 
+### 📜 Warm Yellowish & Parchment Aesthetic
+- **Warm Parchment Styling**: Atmospheric yellowish parchment canvas (`#faf8f2` / `#12110e`) with golden amber highlights, warm borders (`#e7dfcf` / `#2c271e`), and textured scrollbars.
+- **Class-Based Dark Mode**: Complete dark and light theme support synchronized with `localStorage` and OS preference.
+
 ### 🔐 Authentication & Role-Based Authorization
-- **Sign In & Sign Up Views**: Minimalist dark/light mode forms with validation, error banners, and loading indicators.
+- **Sign In & Sign Up Views**: Minimalist parchment dark/light mode forms with validation, error banners, and loading indicators.
 - **Strict Role Security**: Registration window only provisions standard user accounts (`ROLE_USER`). Administrator privileges (`ROLE_ADMIN`) must be granted directly in the database.
 - **Session Persistence**: JWT Bearer tokens and user identity cached in `localStorage` (`quest_auth_token`, `quest_auth_user`).
 - **Axios Interceptors**: Automatically injects `Authorization: Bearer <token>` into all outgoing API requests; intercepts `401 Unauthorized` responses to trigger a clean logout.
@@ -25,10 +29,14 @@ Built with **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, and **@xyfl
 - **Custom Site Emblem & Icon**: Replaced default Vite icon with the custom Quest Planner neon sword & compass emblem across favicons and application navigation headers.
 - **Freehand Pen Drawing & Color Palette**:
   - Draw, sketch, and write freely across the infinite board.
-  - 8 curated color presets (Indigo, Emerald, Amber, Rose, Sky, Purple, Dark, White) plus a native custom color picker.
+  - Curated color presets (Amber default, Gold, Emerald, Rose, Sky, Purple, Dark Charcoal, Parchment White) plus a native custom color picker.
   - Stroke width options: Fine (2px), Medium (4px), Thick (6px), Marker (10px).
   - Vector SVG path rendering synchronized with canvas viewport zoom and pan via `ViewportPortal`.
   - Undo last stroke and Clear all drawings controls.
+- **Interactive Stroke Eraser Tool**:
+  - Real-time line-segment collision detection: drag or click across any drawn stroke to erase it instantly.
+  - Custom amber eraser cursor with dedicated eraser status sub-bar and toggle buttons.
+  - Automatically syncs canvas state with debounced autosave upon pointer release.
 - **Image Nodes (Paste, Reposition, Resize, Rotate)**:
   - **Direct Clipboard Paste**: Press `Ctrl+V` (or `Cmd+V`) anywhere on the board to instantly paste an image.
   - **File Upload**: Dedicated "+ Image" toolbar button with file picker.
@@ -38,8 +46,7 @@ Built with **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, and **@xyfl
   - **Individual Card Deletion**: Top-right trash button with cascading edge cleanup.
 - **Interactive To-Do Nodes**: Real-time task progress bars, inline editing, and a top-right **delete card** button.
 - **Sticky Notes**: Brainstorming cards featuring 5 pastel/neutral themes with an inline delete button.
-- **Debounced Autosave**: Changes to board title, nodes, edges, and drawings persist automatically 1.5 seconds after editing.
-- **Class-Based Dark Mode**: Complete dark and light theme support synchronized with `localStorage` and OS preference.
+- **Debounced Autosave**: Changes to board title, nodes, edges, drawings, and eraser actions persist automatically 1.5 seconds after editing.
 
 ---
 

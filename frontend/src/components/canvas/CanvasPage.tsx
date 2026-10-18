@@ -22,7 +22,6 @@ import {
   CheckSquare,
   StickyNote,
   Image as ImageIcon,
-  PenTool,
   Pencil,
   Undo2,
   Eraser,
@@ -36,6 +35,7 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  MousePointer,
 } from 'lucide-react';
 import { boardApi, deleteNodeApi } from '../../services/api';
 import { CanvasData, DrawingStroke } from '../../types';
@@ -51,14 +51,14 @@ const nodeTypes = {
 };
 
 const PEN_COLORS = [
-  { label: 'Indigo', value: '#6366f1', dot: 'bg-indigo-500' },
-  { label: 'Emerald', value: '#10b981', dot: 'bg-emerald-500' },
   { label: 'Amber', value: '#f59e0b', dot: 'bg-amber-500' },
+  { label: 'Gold', value: '#d97706', dot: 'bg-amber-600' },
+  { label: 'Emerald', value: '#10b981', dot: 'bg-emerald-500' },
   { label: 'Rose', value: '#f43f5e', dot: 'bg-rose-500' },
   { label: 'Sky', value: '#0ea5e9', dot: 'bg-sky-500' },
   { label: 'Purple', value: '#a855f7', dot: 'bg-purple-500' },
-  { label: 'Dark', value: '#18181b', dot: 'bg-neutral-900 border border-neutral-700' },
-  { label: 'White', value: '#ffffff', dot: 'bg-white border border-neutral-300' },
+  { label: 'Dark Charcoal', value: '#1c1917', dot: 'bg-stone-900 border border-stone-700' },
+  { label: 'Parchment White', value: '#ffffff', dot: 'bg-white border border-stone-300' },
 ];
 
 const STROKE_WIDTHS = [
@@ -68,6 +68,7 @@ const STROKE_WIDTHS = [
   { label: 'Marker', value: 10 },
 ];
 
+// Helper to convert an array of points into a smooth SVG bezier path
 const getSvgPathFromStroke = (points: { x: number; y: number }[]): string => {
   if (!points || points.length === 0) return '';
   if (points.length === 1) {
@@ -87,6 +88,30 @@ const getSvgPathFromStroke = (points: { x: number; y: number }[]): string => {
   return d;
 };
 
+// Euclidean distance from point (px, py) to line segment (x1, y1)-(x2, y2)
+function pointToSegmentDistance(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  return Math.hypot(px - projX, py - projY);
+}
+
+// Inline SVG data URI cursor for the Eraser tool
+const ERASER_CURSOR =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E\") 4 20, crosshair";
+
 interface CanvasPageProps {
   boardId: number;
   onBack: () => void;
@@ -101,13 +126,19 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
   const [showMiniMap, setShowMiniMap] = useState(false);
   const [toolbarOpen, setToolbarOpen] = useState(true);
 
+  // Active Tool: 'select' (default pan & node manipulation), 'pen' (drawing), 'eraser' (stroke eraser)
+  const [canvasTool, setCanvasTool] = useState<'select' | 'pen' | 'eraser'>('select');
+
   // Drawing state
-  const [isPenActive, setIsPenActive] = useState(false);
-  const [penColor, setPenColor] = useState('#6366f1');
+  const [penColor, setPenColor] = useState('#f59e0b');
   const [penWidth, setPenWidth] = useState(4);
   const [drawings, setDrawings] = useState<DrawingStroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<DrawingStroke | null>(null);
   const isDrawingRef = useRef(false);
+
+  // Eraser state
+  const isErasingRef = useRef(false);
+  const didEraseRef = useRef(false);
 
   // Hidden file input for image upload
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -271,7 +302,6 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
   // Global Clipboard Paste Handler (Ctrl+V / Cmd+V)
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      // Don't intercept if user is typing into an input/textarea
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
@@ -319,7 +349,6 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
       };
       reader.readAsDataURL(file);
     }
-    // Reset input
     e.target.value = '';
   };
 
@@ -334,13 +363,13 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
       initialData = {
         title: 'Project Checklist',
         todos: [
-          { id: '1', text: 'Define project scope', completed: true },
-          { id: '2', text: 'Draft architectural layout', completed: false },
+          { id: '1', text: 'Define quest objectives', completed: true },
+          { id: '2', text: 'Draft quest layout', completed: false },
         ],
       };
     } else if (type === 'stickyNote') {
       initialData = {
-        content: 'Idea: Brainstorm visual components and wireframes.',
+        content: 'Idea: Brainstorm quest components and milestones.',
         color: 'yellow',
       };
     }
@@ -359,9 +388,11 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
     });
   };
 
-  // Pen Drawing Handlers
+  // ---------------------------------------------------------
+  // Freehand Pen Drawing Handlers
+  // ---------------------------------------------------------
   const handleDrawingPointerDown = (e: React.PointerEvent) => {
-    if (!isPenActive) return;
+    if (canvasTool !== 'pen') return;
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     isDrawingRef.current = true;
@@ -411,6 +442,82 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
     setCurrentStroke(null);
   };
 
+  // ---------------------------------------------------------
+  // Stroke Eraser Handlers (Stroke collision detection)
+  // ---------------------------------------------------------
+  const eraseStrokesAtPoint = useCallback((pos: { x: number; y: number }) => {
+    const ERASER_RADIUS = 16;
+    setDrawings((prev) => {
+      const remaining = prev.filter((stroke) => {
+        if (!stroke.points || stroke.points.length === 0) return false;
+        const threshold = ERASER_RADIUS + (stroke.width || 4) / 2;
+
+        if (stroke.points.length === 1) {
+          return Math.hypot(pos.x - stroke.points[0].x, pos.y - stroke.points[0].y) > threshold;
+        }
+
+        for (let i = 0; i < stroke.points.length - 1; i++) {
+          const d = pointToSegmentDistance(
+            pos.x,
+            pos.y,
+            stroke.points[i].x,
+            stroke.points[i].y,
+            stroke.points[i + 1].x,
+            stroke.points[i + 1].y
+          );
+          if (d <= threshold) {
+            // Hit! Remove this stroke
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (remaining.length !== prev.length) {
+        didEraseRef.current = true;
+        return remaining;
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleEraserPointerDown = (e: React.PointerEvent) => {
+    if (canvasTool !== 'eraser') return;
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    isErasingRef.current = true;
+    didEraseRef.current = false;
+
+    const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    eraseStrokesAtPoint(pos);
+  };
+
+  const handleEraserPointerMove = (e: React.PointerEvent) => {
+    if (!isErasingRef.current) return;
+    e.preventDefault();
+    const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    eraseStrokesAtPoint(pos);
+  };
+
+  const handleEraserPointerUp = (e: React.PointerEvent) => {
+    if (!isErasingRef.current) return;
+    isErasingRef.current = false;
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore
+    }
+
+    if (didEraseRef.current) {
+      didEraseRef.current = false;
+      setDrawings((current) => {
+        triggerAutosave(nodes, edges, current, boardTitle);
+        return current;
+      });
+    }
+  };
+
+  // Undo last stroke
   const handleUndoStroke = () => {
     setDrawings((prev) => {
       if (prev.length === 0) return prev;
@@ -420,6 +527,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
     });
   };
 
+  // Clear all drawings
   const handleClearDrawings = () => {
     if (drawings.length === 0) return;
     if (window.confirm('Clear all drawings and sketches on this board?')) {
@@ -430,15 +538,15 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-neutral-400">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
-        <p className="text-sm">Loading canvas...</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#faf8f2] dark:bg-[#12110e] text-stone-400">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-3" />
+        <p className="text-sm font-medium">Loading Quest Canvas...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-950">
+    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#faf8f2] dark:bg-[#12110e] text-stone-900 dark:text-stone-100">
       {/* Hidden File Picker for Image Upload */}
       <input
         ref={fileInputRef}
@@ -449,11 +557,11 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
       />
 
       {/* Top Navigation Bar */}
-      <header className="h-14 border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md px-4 flex items-center justify-between gap-4 z-10">
+      <header className="h-14 border-b border-amber-200/60 dark:border-amber-900/40 bg-[#faf8f2]/90 dark:bg-[#181611]/90 backdrop-blur-md px-4 flex items-center justify-between gap-4 z-10">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="p-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
             title="Back to Dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -467,7 +575,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
             title="Back to Quest Planner Dashboard"
           />
 
-          <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
+          <div className="h-4 w-px bg-amber-200/60 dark:border-amber-900/40" />
 
           {/* Editable Board Title */}
           <input
@@ -478,15 +586,15 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur();
             }}
-            placeholder="Untitled Board"
-            className="text-sm font-semibold bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 rounded px-2 py-1 text-neutral-900 dark:text-neutral-100 max-w-[200px] sm:max-w-md truncate"
+            placeholder="Untitled Quest Plan"
+            className="text-sm font-semibold bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-amber-500/50 rounded px-2 py-1 text-stone-900 dark:text-stone-100 max-w-[200px] sm:max-w-md truncate"
           />
 
           {/* Autosave Status */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500 font-mono">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500 font-mono">
             {saveStatus === 'saving' && (
               <>
-                <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
+                <Loader2 className="w-3 h-3 animate-spin text-amber-500" />
                 <span>Saving...</span>
               </>
             )}
@@ -513,17 +621,24 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-2">
-          {/* Pen mode indicator badge */}
-          {isPenActive && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 text-xs font-medium animate-pulse">
-              <Pencil className="w-3 h-3" />
-              <span>Drawing Mode Active</span>
+          {/* Active Mode indicator badge */}
+          {canvasTool === 'pen' && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs font-medium animate-pulse">
+              <Pencil className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+              <span>Drawing Mode</span>
+            </div>
+          )}
+
+          {canvasTool === 'eraser' && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs font-medium animate-pulse">
+              <Eraser className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+              <span>Eraser Mode</span>
             </div>
           )}
 
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="p-2 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
             title="Toggle theme"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -541,9 +656,9 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
           onConnect={onConnect}
           onNodesDelete={onNodesDelete}
           nodeTypes={nodeTypes}
-          panOnDrag={!isPenActive}
-          nodesDraggable={!isPenActive}
-          elementsSelectable={!isPenActive}
+          panOnDrag={canvasTool === 'select'}
+          nodesDraggable={canvasTool === 'select'}
+          elementsSelectable={canvasTool === 'select'}
           fitView
           minZoom={0.2}
           maxZoom={2}
@@ -553,7 +668,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
             variant={BackgroundVariant.Dots}
             gap={20}
             size={1}
-            className="bg-neutral-50 dark:bg-neutral-950"
+            className="bg-[#faf8f2] dark:bg-[#12110e]"
           />
 
           {/* SVG Drawings Layer inside ViewportPortal (synchronized with pan/zoom) */}
@@ -590,11 +705,11 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
           {showMiniMap && (
             <MiniMap
-              className="!bg-white dark:!bg-neutral-900 !border-neutral-200 dark:!border-neutral-800 rounded-lg shadow-lg"
+              className="!bg-[#faf8f2] dark:!bg-[#181611] !border-amber-200/70 dark:!border-amber-900/50 rounded-lg shadow-lg"
               nodeColor={(n) => {
                 if (n.type === 'todoNode') return '#10b981';
-                if (n.type === 'imageNode') return '#8b5cf6';
-                return '#f59e0b';
+                if (n.type === 'imageNode') return '#f59e0b';
+                return '#d97706';
               }}
             />
           )}
@@ -602,27 +717,48 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
           <Controls showInteractive={false} position="bottom-right" className="mb-14 sm:mb-2" />
         </ReactFlow>
 
-        {/* Freehand Pen Drawing Interactive Overlay */}
-        {isPenActive && (
+        {/* Interactive Overlay for Pen Drawing and Eraser */}
+        {canvasTool !== 'select' && (
           <div
-            onPointerDown={handleDrawingPointerDown}
-            onPointerMove={handleDrawingPointerMove}
-            onPointerUp={handleDrawingPointerUp}
-            onPointerCancel={handleDrawingPointerUp}
-            className="absolute inset-0 z-20 cursor-crosshair touch-none select-none"
-            title="Click and drag to sketch or write on the canvas"
+            onPointerDown={canvasTool === 'pen' ? handleDrawingPointerDown : handleEraserPointerDown}
+            onPointerMove={canvasTool === 'pen' ? handleDrawingPointerMove : handleEraserPointerMove}
+            onPointerUp={canvasTool === 'pen' ? handleDrawingPointerUp : handleEraserPointerUp}
+            onPointerCancel={canvasTool === 'pen' ? handleDrawingPointerUp : handleEraserPointerUp}
+            className="absolute inset-0 z-20 touch-none select-none cursor-crosshair"
+            style={canvasTool === 'eraser' ? { cursor: ERASER_CURSOR } : undefined}
+            title={
+              canvasTool === 'pen'
+                ? 'Click and drag to sketch or write on the canvas'
+                : 'Click or drag across any stroke to erase it'
+            }
           />
         )}
 
         {/* Floating Canvas Docked Main Toolbar */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border border-neutral-200 dark:border-neutral-800 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#faf8f2]/95 dark:bg-[#1a1712]/95 backdrop-blur-md border border-amber-200/80 dark:border-amber-900/60 shadow-xl shadow-amber-950/5 dark:shadow-black/50">
             {toolbarOpen && (
               <>
+                {/* Select / Move Tool */}
+                <button
+                  onClick={() => setCanvasTool('select')}
+                  className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
+                    canvasTool === 'select'
+                      ? 'bg-amber-500 text-stone-950 font-semibold shadow-sm shadow-amber-500/20'
+                      : 'text-stone-700 dark:text-stone-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/40'
+                  }`}
+                  title="Select & Pan Tool"
+                >
+                  <MousePointer className="w-3.5 h-3.5" />
+                </button>
+
                 {/* To-Do Button */}
                 <button
-                  onClick={() => addNode('todoNode')}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  onClick={() => {
+                    setCanvasTool('select');
+                    addNode('todoNode');
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 dark:text-stone-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
                 >
                   <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />
                   <span>To-Do</span>
@@ -630,8 +766,11 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
                 {/* Sticky Note Button */}
                 <button
-                  onClick={() => addNode('stickyNote')}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  onClick={() => {
+                    setCanvasTool('select');
+                    addNode('stickyNote');
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 dark:text-stone-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
                 >
                   <StickyNote className="w-3.5 h-3.5 text-amber-500" />
                   <span>Note</span>
@@ -639,36 +778,53 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
                 {/* Image Upload / Paste Button */}
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  onClick={() => {
+                    setCanvasTool('select');
+                    fileInputRef.current?.click();
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 dark:text-stone-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
                   title="Upload image (or paste directly with Ctrl+V / Cmd+V)"
                 >
                   <ImageIcon className="w-3.5 h-3.5 text-purple-500" />
                   <span>Image</span>
                 </button>
 
-                <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800 mx-1" />
+                <div className="h-4 w-px bg-amber-200/70 dark:bg-amber-900/50 mx-1" />
 
                 {/* Freehand Pen Mode Toggle */}
                 <button
-                  onClick={() => setIsPenActive((prev) => !prev)}
+                  onClick={() => setCanvasTool((prev) => (prev === 'pen' ? 'select' : 'pen'))}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    isPenActive
-                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                    canvasTool === 'pen'
+                      ? 'bg-amber-500 text-stone-950 font-semibold shadow-sm shadow-amber-500/20'
+                      : 'text-stone-700 dark:text-stone-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/40'
                   }`}
-                  title={isPenActive ? 'Switch to Selection/Pan mode' : 'Enable Freehand Pen Drawing'}
+                  title={canvasTool === 'pen' ? 'Exit Pen mode' : 'Freehand Pen Tool (Draw & write)'}
                 >
-                  <PenTool className="w-3.5 h-3.5" />
+                  <Pencil className="w-3.5 h-3.5" />
                   <span>Pen</span>
                 </button>
 
-                <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800 mx-1" />
+                {/* Interactive Eraser Toggle */}
+                <button
+                  onClick={() => setCanvasTool((prev) => (prev === 'eraser' ? 'select' : 'eraser'))}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    canvasTool === 'eraser'
+                      ? 'bg-amber-500 text-stone-950 font-semibold shadow-sm shadow-amber-500/20'
+                      : 'text-stone-700 dark:text-stone-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/40'
+                  }`}
+                  title={canvasTool === 'eraser' ? 'Exit Eraser mode' : 'Interactive Eraser Tool (Erase drawn strokes)'}
+                >
+                  <Eraser className="w-3.5 h-3.5" />
+                  <span>Eraser</span>
+                </button>
+
+                <div className="h-4 w-px bg-amber-200/70 dark:bg-amber-900/50 mx-1" />
 
                 {/* Zoom Controls */}
                 <button
                   onClick={() => zoomIn()}
-                  className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  className="p-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
                   title="Zoom In"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
@@ -676,7 +832,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
                 <button
                   onClick={() => zoomOut()}
-                  className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  className="p-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
                   title="Zoom Out"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
@@ -684,7 +840,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
                 <button
                   onClick={() => fitView({ padding: 0.2 })}
-                  className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  className="p-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors"
                   title="Fit Screen"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
@@ -694,8 +850,8 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
                   onClick={() => setShowMiniMap((prev) => !prev)}
                   className={`p-1.5 rounded-lg transition-colors ${
                     showMiniMap
-                      ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400'
-                      : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
+                      : 'text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40'
                   }`}
                   title="Toggle Mini-map"
                 >
@@ -706,7 +862,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
             <button
               onClick={() => setToolbarOpen((prev) => !prev)}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ml-0.5"
+              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors ml-0.5"
               title={toolbarOpen ? 'Collapse toolbar' : 'Expand toolbar'}
             >
               {toolbarOpen ? (
@@ -717,9 +873,9 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
             </button>
           </div>
 
-          {/* Dedicated Pen Color & Stroke Palette Sub-bar (when Pen is Active) */}
-          {isPenActive && (
-            <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border border-neutral-200 dark:border-neutral-800 shadow-xl text-xs transition-all">
+          {/* Pen Color & Stroke Palette Sub-bar (when Pen is Active) */}
+          {canvasTool === 'pen' && (
+            <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-xl bg-[#faf8f2]/95 dark:bg-[#1a1712]/95 backdrop-blur-md border border-amber-200/80 dark:border-amber-900/60 shadow-xl text-xs transition-all">
               {/* Preset Color Swatches */}
               <div className="flex items-center gap-1.5 px-1">
                 {PEN_COLORS.map((c) => (
@@ -729,7 +885,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
                     onClick={() => setPenColor(c.value)}
                     className={`w-4 h-4 rounded-full ${c.dot} transition-transform ${
                       penColor.toLowerCase() === c.value.toLowerCase()
-                        ? 'scale-125 ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-neutral-900'
+                        ? 'scale-125 ring-2 ring-amber-500 ring-offset-1 dark:ring-offset-stone-900'
                         : 'opacity-80 hover:opacity-100 hover:scale-110'
                     }`}
                     title={`Color: ${c.label}`}
@@ -738,7 +894,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
 
                 {/* Custom Color Picker */}
                 <label
-                  className="relative w-4 h-4 rounded-full border border-neutral-300 dark:border-neutral-700 overflow-hidden cursor-pointer flex items-center justify-center hover:scale-110 transition-transform"
+                  className="relative w-4 h-4 rounded-full border border-stone-300 dark:border-stone-700 overflow-hidden cursor-pointer flex items-center justify-center hover:scale-110 transition-transform"
                   title="Custom color picker"
                 >
                   <input
@@ -754,7 +910,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
                 </label>
               </div>
 
-              <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
+              <div className="h-4 w-px bg-amber-200/70 dark:bg-amber-900/50" />
 
               {/* Stroke Width Selector */}
               <div className="flex items-center gap-1">
@@ -765,8 +921,8 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
                     onClick={() => setPenWidth(sw.value)}
                     className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
                       penWidth === sw.value
-                        ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
-                        : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
+                        ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold'
+                        : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
                     }`}
                     title={`${sw.label} stroke (${sw.value}px)`}
                   >
@@ -775,14 +931,14 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
                 ))}
               </div>
 
-              <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
+              <div className="h-4 w-px bg-amber-200/70 dark:bg-amber-900/50" />
 
               {/* Undo Last Stroke */}
               <button
                 type="button"
                 onClick={handleUndoStroke}
                 disabled={drawings.length === 0}
-                className="p-1 rounded text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                className="p-1 rounded text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                 title="Undo last stroke"
               >
                 <Undo2 className="w-3.5 h-3.5" />
@@ -793,7 +949,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
                 type="button"
                 onClick={handleClearDrawings}
                 disabled={drawings.length === 0}
-                className="p-1 rounded text-neutral-600 dark:text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                className="p-1 rounded text-stone-600 dark:text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                 title="Clear all drawings"
               >
                 <Eraser className="w-3.5 h-3.5" />
@@ -802,9 +958,55 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
               {/* Exit Pen Mode */}
               <button
                 type="button"
-                onClick={() => setIsPenActive(false)}
-                className="p-1 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ml-1"
+                onClick={() => setCanvasTool('select')}
+                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors ml-1"
                 title="Exit Pen Mode"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Eraser Sub-bar (when Eraser is Active) */}
+          {canvasTool === 'eraser' && (
+            <div className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-[#faf8f2]/95 dark:bg-[#1a1712]/95 backdrop-blur-md border border-amber-200/80 dark:border-amber-900/60 shadow-xl text-xs transition-all">
+              <div className="flex items-center gap-1.5 text-stone-700 dark:text-stone-300">
+                <Eraser className="w-3.5 h-3.5 text-amber-500" />
+                <span className="font-medium text-[11px] sm:text-xs">
+                  Eraser Active: Click or drag across strokes to erase
+                </span>
+              </div>
+
+              <div className="h-4 w-px bg-amber-200/70 dark:bg-amber-900/50 mx-1" />
+
+              {/* Undo Last Erased / Drawn Stroke */}
+              <button
+                type="button"
+                onClick={handleUndoStroke}
+                disabled={drawings.length === 0}
+                className="p-1 rounded text-stone-600 dark:text-stone-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                title="Undo last stroke"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Clear All Drawings */}
+              <button
+                type="button"
+                onClick={handleClearDrawings}
+                disabled={drawings.length === 0}
+                className="p-1 rounded text-stone-600 dark:text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                title="Clear all drawings"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Exit Eraser Mode */}
+              <button
+                type="button"
+                onClick={() => setCanvasTool('select')}
+                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors ml-1"
+                title="Exit Eraser Mode"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
