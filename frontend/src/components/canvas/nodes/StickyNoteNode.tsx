@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { Trash2 } from 'lucide-react';
 import { StickyNoteNodeData } from '../../../types';
 
 const COLOR_PRESETS = [
@@ -10,10 +11,15 @@ const COLOR_PRESETS = [
   { name: 'neutral', bg: 'bg-neutral-100 dark:bg-neutral-900', border: 'border-neutral-300 dark:border-neutral-800', dot: 'bg-neutral-400' },
 ];
 
-export const StickyNoteNode: React.FC<NodeProps> = ({ data }) => {
+export const StickyNoteNode: React.FC<NodeProps> = ({ id, data }) => {
+  const { deleteElements } = useReactFlow();
   const nodeData = (data as unknown) as StickyNoteNodeData;
   const [content, setContent] = useState(nodeData.content || 'Notes & brainstorm ideas...');
   const [selectedColor, setSelectedColor] = useState(nodeData.color || 'yellow');
+
+  const handleDeleteNode = () => {
+    deleteElements({ nodes: [{ id }] });
+  };
 
   const syncData = (newContent: string, newColor: string) => {
     nodeData.content = newContent;
@@ -56,6 +62,16 @@ export const StickyNoteNode: React.FC<NodeProps> = ({ data }) => {
               title={`Color: ${preset.name}`}
             />
           ))}
+
+          <div className="h-3 w-px bg-black/10 dark:bg-white/10 mx-0.5" />
+
+          <button
+            onClick={handleDeleteNode}
+            title="Delete note"
+            className="p-1 rounded text-neutral-400 hover:text-red-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

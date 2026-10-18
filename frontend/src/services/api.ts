@@ -1,14 +1,17 @@
 import axios from 'axios';
 import { BoardDetail, BoardSummary, CreateBoardDto, UpdateBoardDto } from '../types';
 
-const API_BASE_URL = 'http://localhost:8080/api/v1/boards';
+// In production on Vercel, set VITE_API_BASE_URL in Vercel project environment variables
+// Example: https://your-backend.onrender.com/api/v1/boards
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1/boards';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
 export const boardApi = {
@@ -58,4 +61,16 @@ export const boardApi = {
     const response = await api.post<{ sql: string }>(`/${id}/export-sql`);
     return response.data.sql;
   },
+
+  /**
+   * Delete a node from a board and remove connected edges
+   */
+  async deleteNodeApi(boardId: number, nodeId: string): Promise<BoardDetail> {
+    const response = await api.delete<BoardDetail>(`/${boardId}/nodes/${nodeId}`);
+    return response.data;
+  },
+};
+
+export const deleteNodeApi = async (boardId: number, nodeId: string): Promise<BoardDetail> => {
+  return boardApi.deleteNodeApi(boardId, nodeId);
 };

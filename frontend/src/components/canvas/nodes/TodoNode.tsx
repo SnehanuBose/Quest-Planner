@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
 import { CheckSquare, Plus, Trash2 } from 'lucide-react';
 import { TodoNodeData, TodoItem } from '../../../types';
 
-export const TodoNode: React.FC<NodeProps> = ({ data }) => {
+export const TodoNode: React.FC<NodeProps> = ({ id, data }) => {
+  const { deleteElements } = useReactFlow();
   const nodeData = (data as unknown) as TodoNodeData;
   const [title, setTitle] = useState(nodeData.title || 'Tasks');
   const [todos, setTodos] = useState<TodoItem[]>(nodeData.todos || []);
   const [newText, setNewText] = useState('');
+
+  const handleDeleteNode = () => {
+    deleteElements({ nodes: [{ id }] });
+  };
 
   // Keep nodeData synchronized so canvas serialization picks it up
   const syncData = (updatedTodos: TodoItem[], updatedTitle: string) => {
@@ -68,9 +73,18 @@ export const TodoNode: React.FC<NodeProps> = ({ data }) => {
             placeholder="List Title"
           />
         </div>
-        <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 shrink-0">
-          {completedCount}/{todos.length}
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">
+            {completedCount}/{todos.length}
+          </span>
+          <button
+            onClick={handleDeleteNode}
+            title="Delete card"
+            className="p-1 rounded text-neutral-400 hover:text-red-500 hover:bg-neutral-200/50 dark:hover:bg-neutral-700/50 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Progress Bar */}

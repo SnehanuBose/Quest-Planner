@@ -213,6 +213,33 @@ Base URL: `http://localhost:8080/api/v1/boards`
 
 ---
 
+## ☁️ Deployment Guide (Render & Vercel)
+
+Both subprojects are pre-configured with environment variables for seamless deployment:
+
+### 1. Backend on Render (Web Service)
+* **Root Directory**: `Backend`
+* **Environment**: `Java` or `Docker`
+* **Build Command**: `mvn clean package -DskipTests`
+* **Start Command**: `java -jar target/whiteboard-backend-1.0.0.jar`
+* **Environment Variables** (in Render dashboard):
+  * `PORT`: `8080` (or leave default, Render injects `PORT`)
+  * `SPRING_DATASOURCE_URL`: `jdbc:postgresql://<your-neon-host>/<your-db>?sslmode=require`
+  * `SPRING_DATASOURCE_USERNAME`: `<your-db-user>`
+  * `SPRING_DATASOURCE_PASSWORD`: `<your-db-password>`
+  * `CORS_ALLOWED_ORIGINS`: `https://your-frontend.vercel.app` *(add custom domains separated by comma)*
+  * `CORS_ALLOWED_ORIGIN_PATTERNS`: `https://*.vercel.app` *(allows preview deployments)*
+
+### 2. Frontend on Vercel
+* **Root Directory**: `frontend`
+* **Framework Preset**: `Vite`
+* **Build Command**: `npm run build`
+* **Output Directory**: `dist`
+* **Environment Variables** (in Vercel dashboard):
+  * `VITE_API_BASE_URL`: `https://<your-render-backend-url>.onrender.com/api/v1/boards`
+
+---
+
 ## 🤝 Contributing & License
 
 This project is licensed under the **MIT License**. Contributions, issues, and feature requests are welcome!

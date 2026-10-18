@@ -32,7 +32,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { boardApi } from '../../services/api';
+import { boardApi, deleteNodeApi } from '../../services/api';
 import { CanvasData } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { TodoNode } from './nodes/TodoNode';
@@ -143,7 +143,10 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
   const handleNodesChange = useCallback(
     (changes: any) => {
       onNodesChange(changes);
-      triggerAutosave(nodes, edges, boardTitle);
+      const hasRemoval = changes.some((c: any) => c.type === 'remove');
+      if (!hasRemoval) {
+        triggerAutosave(nodes, edges, boardTitle);
+      }
     },
     [nodes, edges, boardTitle, onNodesChange, triggerAutosave]
   );
@@ -154,6 +157,25 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
       triggerAutosave(nodes, edges, boardTitle);
     },
     [nodes, edges, boardTitle, onEdgesChange, triggerAutosave]
+  );
+
+  // Handle Node Deletion sync
+  const onNodesDelete = useCallback(
+    (deletedNodes: Node[]) => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+      setSaveStatus('saving');
+      Promise.all(deletedNodes.map((node) => deleteNodeApi(boardId, node.id)))
+        .then(() => {
+          setSaveStatus('saved');
+        })
+        .catch((err) => {
+          console.error('Failed to delete node via API:', err);
+          setSaveStatus('error');
+        });
+    },
+    [boardId]
   );
 
   const handleTitleBlur = () => {
@@ -321,6 +343,7 @@ const CanvasContent: React.FC<CanvasPageProps> = ({ boardId, onBack }) => {
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
+          onNodesDelete={onNodesDelete}
           nodeTypes={nodeTypes}
           fitView
           minZoom={0.2}

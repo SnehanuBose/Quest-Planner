@@ -71,4 +71,14 @@ public interface BoardService {
      * @throws com.whiteboard.backend.exception.ResourceNotFoundException if no board exists with the given ID
      */
     void deleteBoard(Long id);
+
+    /**
+     * Removes a specific node and its connected edges from a board's canvas data.
+     *
+     * @param boardId the unique identifier of the board
+     * @param nodeId  the unique identifier of the node to remove
+     * @return the updated board response with the node and connected edges removed
+     * @throws com.whiteboard.backend.exception.ResourceNotFoundException if no board exists with the given ID
+     */
+    BoardResponse deleteNode(Long boardId, String nodeId);
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
 import { Database, Plus, Trash2, Key } from 'lucide-react';
 import { ERTableNodeData, ERColumn } from '../../../types';
 
@@ -16,7 +16,8 @@ const COMMON_SQL_TYPES = [
   'DECIMAL(10,2)',
 ];
 
-export const ERTableNode: React.FC<NodeProps> = ({ data }) => {
+export const ERTableNode: React.FC<NodeProps> = ({ id, data }) => {
+  const { deleteElements } = useReactFlow();
   const nodeData = (data as unknown) as ERTableNodeData;
   const [label, setLabel] = useState(nodeData.label || 'table_name');
   const [columns, setColumns] = useState<ERColumn[]>(
@@ -24,6 +25,10 @@ export const ERTableNode: React.FC<NodeProps> = ({ data }) => {
       { id: 'c-1', name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
     ]
   );
+
+  const handleDeleteNode = () => {
+    deleteElements({ nodes: [{ id }] });
+  };
 
   const syncData = (updatedCols: ERColumn[], updatedLabel: string) => {
     nodeData.columns = updatedCols;
@@ -79,9 +84,18 @@ export const ERTableNode: React.FC<NodeProps> = ({ data }) => {
             placeholder="table_name"
           />
         </div>
-        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
-          TABLE
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
+            TABLE
+          </span>
+          <button
+            onClick={handleDeleteNode}
+            title="Delete table"
+            className="p-1 rounded text-neutral-400 hover:text-red-500 hover:bg-indigo-100/50 dark:hover:bg-neutral-800 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Columns Header */}

@@ -126,6 +126,46 @@ public class BoardServiceImpl implements BoardService {
         log.info("Board deleted successfully with id: {}", id);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public BoardResponse deleteNode(Long boardId, String nodeId) {
+        log.info("Deleting node '{}' from board with id: {}", nodeId, boardId);
+
+        Board board = findBoardOrThrow(boardId);
+        Map<String, Object> canvasData = board.getCanvasData();
+
+        if (canvasData != null && nodeId != null) {
+            // Remove node matching nodeId
+            Object nodesObj = canvasData.get("nodes");
+            if (nodesObj instanceof List<?>) {
+                List<Map<String, Object>> nodes = (List<Map<String, Object>>) nodesObj;
+                List<Map<String, Object>> filteredNodes = nodes.stream()
+                        .filter(node -> !nodeId.equals(String.valueOf(node.get("id"))))
+                        .collect(Collectors.toList());
+                canvasData.put("nodes", filteredNodes);
+            }
+
+            // Cascade-remove any connected edges (source == nodeId || target == nodeId)
+            Object edgesObj = canvasData.get("edges");
+            if (edgesObj instanceof List<?>) {
+                List<Map<String, Object>> edges = (List<Map<String, Object>>) edgesObj;
+                List<Map<String, Object>> filteredEdges = edges.stream()
+                        .filter(edge -> !nodeId.equals(String.valueOf(edge.get("source")))
+                                     && !nodeId.equals(String.valueOf(edge.get("target"))))
+                        .collect(Collectors.toList());
+                canvasData.put("edges", filteredEdges);
+            }
+
+            board.setCanvasData(canvasData);
+            board = boardRepository.save(board);
+        }
+
+        return toFullResponse(board);
+    }
+
     // -------------------------------------------------------------------------
     // Private Helper Methods
     // -------------------------------------------------------------------------

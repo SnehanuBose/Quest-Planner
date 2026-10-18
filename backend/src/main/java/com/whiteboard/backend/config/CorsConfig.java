@@ -22,16 +22,19 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig {
 
-    @Value("${cors.allowed-origins}")
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
     private String[] allowedOrigins;
 
-    @Value("${cors.allowed-methods}")
+    @Value("${cors.allowed-origin-patterns:https://*.vercel.app}")
+    private String[] allowedOriginPatterns;
+
+    @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS}")
     private String[] allowedMethods;
 
-    @Value("${cors.allowed-headers}")
+    @Value("${cors.allowed-headers:*}")
     private String allowedHeaders;
 
-    @Value("${cors.max-age}")
+    @Value("${cors.max-age:3600}")
     private long maxAge;
 
     /**
@@ -44,12 +47,19 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                        .allowedOrigins(allowedOrigins)
+                var mapping = registry.addMapping("/api/**")
                         .allowedMethods(allowedMethods)
-                        .allowedHeaders(allowedHeaders)
+                        .allowedHeaders(allowedHeaders.split(","))
                         .allowCredentials(true)
                         .maxAge(maxAge);
+
+                if (allowedOrigins != null && allowedOrigins.length > 0) {
+                    mapping.allowedOrigins(allowedOrigins);
+                }
+
+                if (allowedOriginPatterns != null && allowedOriginPatterns.length > 0) {
+                    mapping.allowedOriginPatterns(allowedOriginPatterns);
+                }
             }
         };
     }

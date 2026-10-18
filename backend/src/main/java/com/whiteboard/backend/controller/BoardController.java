@@ -120,6 +120,21 @@ public class BoardController {
     }
 
     /**
+     * Removes a specific node and its connected edges from a board's canvas data.
+     *
+     * @param boardId the unique identifier of the board
+     * @param nodeId  the unique identifier of the node to remove
+     * @return HTTP 200 with the updated board details
+     */
+    @DeleteMapping("/{boardId}/nodes/{nodeId}")
+    public ResponseEntity<BoardResponse> deleteNode(
+            @PathVariable Long boardId,
+            @PathVariable String nodeId) {
+        log.info("DELETE /api/v1/boards/{}/nodes/{} — Deleting node", boardId, nodeId);
+        return ResponseEntity.ok(boardService.deleteNode(boardId, nodeId));
+    }
+
+    /**
      * Exports the ER diagram from a board's canvas data as a PostgreSQL DDL script.
      *
      * <p>Parses all {@code erTable} nodes and edge connections from the board's
