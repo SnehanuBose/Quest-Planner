@@ -79,11 +79,19 @@ export interface User {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string; // backwards compatibility alias for accessToken
+  accessToken: string;
+  refreshToken: string;
+  tokenType?: string;
+  expiresIn?: number;
   id: number;
   username: string;
   email: string;
   role: Role;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
 }
 
 export interface LoginRequest {

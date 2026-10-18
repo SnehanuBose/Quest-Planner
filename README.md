@@ -112,11 +112,14 @@
 | Domain | Feature | Description |
 |---|---|---|
 | **Theme** | **Yellowish / Parchment Aesthetic** | Warm parchment canvas (`#faf8f2` / `#12110e`) with golden amber highlights and dark mode toggle. |
-| **Security** | **JWT Authentication** | Secure user registration and login with stateless JWTs (HMAC-SHA256) and BCrypt passwords. |
+| **Security** | **Short-Lived JWT Access Tokens** | Stateless HMAC-SHA256 tokens expiring in 15 minutes (`JWT_EXPIRATION_MS`), carrying user claims. |
+| **Security** | **Long-Lived Refresh Tokens** | Secure 7-day database-backed refresh tokens (`JWT_REFRESH_EXPIRATION_MS`) with automatic token rotation and server-side session revocation. |
+| **Security** | **Silent Background Refresh** | Axios response interceptor seamlessly renews expired access tokens behind the scenes without user disruption or credential prompts. |
 | **Security** | **Role-Based Access (RBAC)** | Dedicated privileges for `ROLE_USER` and `ROLE_ADMIN`. |
 | **Security** | **DB-Only Admin Provisioning** | Account registration window only creates standard users. Admin privileges can only be granted directly via database update. |
 | **Privacy** | **Zero-Knowledge Board Isolation** | Users can view/modify only their own boards. Admins cannot view, read, or inspect user boards. |
 | **Admin** | **Oversight Dashboard** | Platform statistics and registered user list with aggregate plan counts without leaking user data. |
+| **Analytics** | **Vercel Web Analytics** | Official `@vercel/analytics` integrated globally across all routes for real-time traffic and Web Vitals monitoring. |
 | **Canvas** | **Infinite Workspace** | Pan, zoom, and multi-touch support powered by `@xyflow/react`. |
 | **Drawing** | **Freehand Pen & Palette** | Draw or write freely on the infinite canvas. Includes 8 color presets (amber default), custom color picker, stroke width controls, and undo. |
 | **Drawing** | **Interactive Eraser** | Real-time vector stroke eraser that removes any drawn line upon collision (drag or click). |
@@ -268,8 +271,10 @@ Planner/
 ### Authentication (`/api/v1/auth`)
 | Method | Endpoint | Request Body | Description | Access |
 |---|---|---|---|---|
-| `POST` | `/api/v1/auth/register` | `RegisterRequest` | Register a new standard user (`ROLE_USER`) | Public |
-| `POST` | `/api/v1/auth/login` | `LoginRequest` | Authenticate and obtain JWT token | Public |
+| `POST` | `/api/v1/auth/register` | `RegisterRequest` | Register standard user & issue access + refresh tokens | Public |
+| `POST` | `/api/v1/auth/login` | `LoginRequest` | Authenticate and issue short-lived access + long-lived refresh tokens | Public |
+| `POST` | `/api/v1/auth/refresh` | `RefreshTokenRequest` | Renew expired short-lived access token with rotated refresh token | Public |
+| `POST` | `/api/v1/auth/logout` | `RefreshTokenRequest` | Terminate session and revoke refresh token in database | Public / Auth |
 | `GET` | `/api/health` | — | Service health check | Public |
 
 ### Admin Oversight (`/api/v1/admin`)

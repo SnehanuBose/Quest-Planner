@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from '../types';
-import { authApi } from '../services/api';
+import { authApi, clearAuthSession, setAuthSession, TOKEN_STORAGE } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest) => Promise<void>;
@@ -14,13 +16,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'quest_auth_token';
-const USER_KEY = 'quest_auth_user';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [accessToken, setAccessToken] = useState<string | null>(() =>
+    localStorage.getItem(TOKEN_STORAGE.ACCESS_TOKEN) || localStorage.getItem(TOKEN_STORAGE.LEGACY_TOKEN)
+  );
+  const [refreshToken, setRefreshToken] = useState<string | null>(() =>
+    localStorage.getItem(TOKEN_STORAGE.REFRESH_TOKEN)
+  );
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem(USER_KEY);
+    const saved = localStorage.getItem(TOKEN_STORAGE.USER_DATA);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -33,29 +37,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const saveAuthSession = (res: AuthResponse) => {
+    const activeAccessToken = res.accessToken || res.token || '';
+    const activeRefreshToken = res.refreshToken || '';
+
     const userData: User = {
       id: res.id,
       username: res.username,
       email: res.email,
       role: res.role,
     };
-    localStorage.setItem(TOKEN_KEY, res.token);
-    localStorage.setItem(USER_KEY, JSON.stringify(userData));
-    setToken(res.token);
+
+    setAuthSession(activeAccessToken, activeRefreshToken);
+    localStorage.setItem(TOKEN_STORAGE.USER_DATA, JSON.stringify(userData));
+
+    setAccessToken(activeAccessToken);
+    setRefreshToken(activeRefreshToken);
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    setToken(null);
+    const currentRefreshToken =
+      refreshToken || localStorage.getItem(TOKEN_STORAGE.REFRESH_TOKEN);
+
+    // Revoke refresh token on backend
+    if (currentRefreshToken) {
+      authApi.logout(currentRefreshToken);
+    }
+
+    clearAuthSession();
+    setAccessToken(null);
+    setRefreshToken(null);
     setUser(null);
   };
 
   useEffect(() => {
-    // Sync with logout events (e.g. from axios 401 interceptor)
+    // Sync with logout events (e.g. from axios 401 interceptor when refresh fails)
     const handleLogoutEvent = () => {
-      logout();
+      setAccessToken(null);
+      setRefreshToken(null);
+      setUser(null);
     };
 
     window.addEventListener('auth:logout', handleLogoutEvent);
@@ -80,8 +100,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        token,
-        isAuthenticated: !!token && !!user,
+        token: accessToken,
+        accessToken,
+        refreshToken,
+        isAuthenticated: !!accessToken && !!user,
         isLoading,
         login,
         register,

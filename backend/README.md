@@ -78,7 +78,8 @@ The backend is built on **clean architecture** and strict separation of concerns
 ```
 
 **Key Architectural Decisions:**
-- **Stateless Session Management**: Authentication is fully stateless using signed JWTs (HMAC-SHA256).
+- **Dual-Token Architecture**: Short-lived JWT access tokens (`accessToken`, 15 minutes) for stateless request authorization paired with long-lived database-backed refresh tokens (`refreshToken`, 7 days).
+- **Refresh Token Rotation & Revocation**: Every call to `/refresh` rotates the refresh token to mitigate replay attacks; calling `/logout` immediately revokes the session on the server.
 - **User Ownership Isolation**: Every board query is filtered through `SecurityUtils.getCurrentUserId()`. Any attempt to access another user's board ID returns `404 Not Found`.
 - **JSONB Canvas Mapping**: Visual nodes, edges, and drawings live in PostgreSQL `jsonb`, mapped with Hibernate 6 `@JdbcTypeCode(SqlTypes.JSON)`.
 - **Preflight CORS Integration**: `CorsConfigurationSource` is exposed as a Spring Bean, guaranteeing seamless preflight (`OPTIONS`) handling for Vercel preview and production domains.
@@ -187,8 +188,10 @@ The application will launch on **http://localhost:8080**.
 ### 1. Authentication (`/api/v1/auth`)
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/register` | Public | Register new user with username, email, password, and optional role |
-| `POST` | `/api/v1/auth/login` | Public | Authenticate credentials and receive signed Bearer JWT |
+| `POST` | `/api/v1/auth/register` | Public | Register new user with username, email, password; returns access & refresh tokens |
+| `POST` | `/api/v1/auth/login` | Public | Authenticate credentials and receive short-lived access token + long-lived refresh token |
+| `POST` | `/api/v1/auth/refresh` | Public | Renew expired access token and receive new access token + rotated refresh token |
+| `POST` | `/api/v1/auth/logout` | Public / Auth | Revoke refresh token in database, terminating the active session |
 
 ### 2. Admin Oversight (`/api/v1/admin`)
 | Method | Endpoint | Access | Description |

@@ -12,11 +12,12 @@ Styled with a **warm yellowish parchment theme** (`#faf8f2` light / `#12110e` da
 - **Warm Parchment Styling**: Atmospheric yellowish parchment canvas (`#faf8f2` / `#12110e`) with golden amber highlights, warm borders (`#e7dfcf` / `#2c271e`), and textured scrollbars.
 - **Class-Based Dark Mode**: Complete dark and light theme support synchronized with `localStorage` and OS preference.
 
-### 🔐 Authentication & Role-Based Authorization
-- **Sign In & Sign Up Views**: Minimalist parchment dark/light mode forms with validation, error banners, and loading indicators.
-- **Strict Role Security**: Registration window only provisions standard user accounts (`ROLE_USER`). Administrator privileges (`ROLE_ADMIN`) must be granted directly in the database.
-- **Session Persistence**: JWT Bearer tokens and user identity cached in `localStorage` (`quest_auth_token`, `quest_auth_user`).
-- **Axios Interceptors**: Automatically injects `Authorization: Bearer <token>` into all outgoing API requests; intercepts `401 Unauthorized` responses to trigger a clean logout.
+### 🔐 Authentication & Dual-Token Architecture
+- **Short-Lived Access Tokens (15 min)**: Stateless JWTs containing user claims (`userId`, `username`, `role`) attached automatically to outgoing requests.
+- **Long-Lived Refresh Tokens (7 days)**: Stored in `localStorage` (`quest_refresh_token`) and persisted in the database with rotation on every refresh.
+- **Silent Axios Interceptor**: On `401 Unauthorized`, automatically queues pending requests, queries `POST /api/v1/auth/refresh`, updates the tokens, and retries the original requests seamlessly without user interruption.
+- **Server-Side Logout**: Calling `logout()` revokes the refresh token in PostgreSQL and clears all cached session tokens.
+- **Strict Role Security**: Registration window strictly creates standard user accounts (`ROLE_USER`). Administrator privileges (`ROLE_ADMIN`) must be granted directly in PostgreSQL.
 - **Protected Routing**: Unauthenticated visitors are routed to `/login`.
 
 ### 🛡️ Admin Oversight Dashboard (`/admin`)

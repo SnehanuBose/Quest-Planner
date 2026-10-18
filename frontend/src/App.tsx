@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Dashboard } from './components/dashboard/Dashboard';
@@ -57,9 +58,9 @@ const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-400">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
-        <p className="text-xs">Initializing Quest Planner...</p>
+      <div className="min-h-screen bg-[#faf8f2] dark:bg-[#12110e] flex flex-col items-center justify-center text-stone-400">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-2" />
+        <p className="text-xs font-medium">Initializing Quest Planner...</p>
       </div>
     );
   }
@@ -110,6 +111,7 @@ export const App: React.FC = () => {
     <ThemeProvider>
       <AuthProvider>
         <AppContent />
+        <Analytics />
       </AuthProvider>
     </ThemeProvider>
   );

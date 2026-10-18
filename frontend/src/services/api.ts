@@ -41,10 +41,34 @@ export const api = axios.create({
   timeout: 15000,
 });
 
-// Request Interceptor: Attach JWT Bearer Token
+export const TOKEN_STORAGE = {
+  ACCESS_TOKEN: 'quest_access_token',
+  REFRESH_TOKEN: 'quest_refresh_token',
+  LEGACY_TOKEN: 'quest_auth_token',
+  USER_DATA: 'quest_auth_user',
+};
+
+export const setAuthSession = (accessToken: string, refreshToken?: string) => {
+  localStorage.setItem(TOKEN_STORAGE.ACCESS_TOKEN, accessToken);
+  localStorage.setItem(TOKEN_STORAGE.LEGACY_TOKEN, accessToken);
+  if (refreshToken) {
+    localStorage.setItem(TOKEN_STORAGE.REFRESH_TOKEN, refreshToken);
+  }
+};
+
+export const clearAuthSession = () => {
+  localStorage.removeItem(TOKEN_STORAGE.ACCESS_TOKEN);
+  localStorage.removeItem(TOKEN_STORAGE.REFRESH_TOKEN);
+  localStorage.removeItem(TOKEN_STORAGE.LEGACY_TOKEN);
+  localStorage.removeItem(TOKEN_STORAGE.USER_DATA);
+};
+
+// Request Interceptor: Attach JWT Bearer Access Token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('quest_auth_token');
+    const token =
+      localStorage.getItem(TOKEN_STORAGE.ACCESS_TOKEN) ||
+      localStorage.getItem(TOKEN_STORAGE.LEGACY_TOKEN);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -53,18 +77,84 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle 401 Unauthorized
+// Response Interceptor: Handle 401 with Silent Refresh Token Rotation
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      const url = error.config?.url || '';
-      if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
-        localStorage.removeItem('quest_auth_token');
-        localStorage.removeItem('quest_auth_user');
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Only intercept 401 Unauthorized if request exists and hasn't been retried
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      const requestUrl = originalRequest.url || '';
+
+      // Skip refresh attempt on auth endpoints to prevent loops
+      if (
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/register') ||
+        requestUrl.includes('/auth/refresh') ||
+        requestUrl.includes('/auth/logout')
+      ) {
+        return Promise.reject(error);
+      }
+
+      const refreshToken = localStorage.getItem(TOKEN_STORAGE.REFRESH_TOKEN);
+      if (!refreshToken) {
+        clearAuthSession();
         window.dispatchEvent(new Event('auth:logout'));
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((newToken) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshUrl = `${getApiRoot()}/auth/refresh`;
+        const res = await axios.post<AuthResponse>(refreshUrl, { refreshToken });
+        const { accessToken, refreshToken: newRefreshToken } = res.data;
+
+        setAuthSession(accessToken, newRefreshToken);
+        processQueue(null, accessToken);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        clearAuthSession();
+        window.dispatchEvent(new Event('auth:logout'));
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );
@@ -81,6 +171,19 @@ export const authApi = {
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/login', data);
     return response.data;
+  },
+
+  async refreshToken(refreshToken: string): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/auth/refresh', { refreshToken });
+    return response.data;
+  },
+
+  async logout(refreshToken?: string | null): Promise<void> {
+    try {
+      await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
+    } catch {
+      // Ignore network errors during logout
+    }
   },
 };
 
